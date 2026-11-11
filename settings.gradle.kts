@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "pushpilot-android"
-include(":sdk")
+include(":sdk", ":sample")
