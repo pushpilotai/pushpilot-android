@@ -34,5 +34,6 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 dependencies {
     implementation(project(":sdk"))
     // Only the sample uses Firebase; the SDK itself has no Firebase dependency.
-    implementation("com.google.firebase:firebase-messaging:24.1.1")
+    // 25.1.x is the newest line with Firebase Installation IDs that still supports minSdk 23 (26.x needs 24).
+    implementation("com.google.firebase:firebase-messaging:25.1.3")
 }

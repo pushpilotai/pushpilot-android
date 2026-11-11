@@ -1,11 +1,11 @@
 # PushPilot Android SDK
 
-Registers your app's installation with PushPilot and forwards its FCM push token, so you can send pushes to individual users from the PushPilot dashboard.
+Registers your app's installation with PushPilot and forwards its FCM push address (registration token or Firebase Installation ID), so you can send pushes to individual users from the PushPilot dashboard.
 
 - Kotlin, Android 6.0 (API 23) and later.
-- No Firebase dependency and no other runtime dependency besides the Kotlin standard library. Your app keeps its own Firebase setup and hands the SDK its FCM token.
+- No Firebase dependency and no other runtime dependency besides the Kotlin standard library. Your app keeps its own Firebase setup and hands the SDK its FCM push address.
 - Never asks for notification permission, never starts a service, and collects no hardware identifier.
-- All network and disk work runs on one background thread. No method throws; problems are logged at debug level under the tag `PushPilot`. The push token and SDK key are never logged.
+- All network and disk work runs on one background thread. No method throws; problems are logged at debug level under the tag `PushPilot`. The push address and SDK key are never logged.
 
 ## Install
 
@@ -26,21 +26,44 @@ The artifact is not published to a public repository yet. To use it locally, run
        override fun onCreate() {
            super.onCreate()
            PushPilot.init(this, "pp_sdk_...")
-           FirebaseMessaging.getInstance().token.addOnSuccessListener { PushPilot.setPushToken(it) }
        }
    }
    ```
 
-2. **Forward every new token** from your own `FirebaseMessagingService`, and tell PushPilot pushes apart from your others:
+2. **Forward the push address** from your own `FirebaseMessagingService` with `setPushToken`. Pass whichever one your Firebase version provides, and **only one of them**:
+
+   - **`firebase-messaging` 25.1.0 or later: the Firebase Installation ID (FID).** Firebase deprecates registration tokens in favour of FIDs. Enable FIDs in your app's `AndroidManifest.xml`:
+
+     ```xml
+     <meta-data android:name="firebase_messaging_installation_id_enabled" android:value="true" />
+     ```
+
+     Firebase calls `onRegistered` at startup, after each `FirebaseMessaging.getInstance().register()` call, and whenever the FID changes:
+
+     ```kotlin
+     class MyMessagingService : FirebaseMessagingService() {
+         override fun onRegistered(installationId: String) = PushPilot.setPushToken(installationId)
+     }
+     ```
+
+   - **Older versions: the registration token.** Forward it at launch and from `onNewToken`:
+
+     ```kotlin
+     // In Application.onCreate, after init:
+     FirebaseMessaging.getInstance().token.addOnSuccessListener { PushPilot.setPushToken(it) }
+
+     // In your FirebaseMessagingService:
+     override fun onNewToken(token: String) = PushPilot.setPushToken(token)
+     ```
+
+   The SDK sends either value unchanged in the same `token` field, and the server tells them apart. Firebase's "installation ID" is not PushPilot's installation id: the FID is Firebase's push address, while PushPilot's `installation_id` is the SDK's own random id for this install.
+
+   In the same service, tell PushPilot pushes apart from your others:
 
    ```kotlin
-   class MyMessagingService : FirebaseMessagingService() {
-       override fun onNewToken(token: String) = PushPilot.setPushToken(token)
-
-       override fun onMessageReceived(message: RemoteMessage) {
-           if (PushPilot.handleMessage(message.data)) {
-               // A PushPilot push. Show it or route it as you like.
-           }
+   override fun onMessageReceived(message: RemoteMessage) {
+       if (PushPilot.handleMessage(message.data)) {
+           // A PushPilot push. Show it or route it as you like.
        }
    }
    ```
@@ -60,7 +83,7 @@ All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPi
 | Method | What it does |
 |---|---|
 | `init(context, sdkKey, baseUrl = null)` | Starts the SDK. `baseUrl` defaults to `PushPilot.DEFAULT_BASE_URL` (`https://pushpilot.ai`); pass your own for a self-hosted server. |
-| `setPushToken(token: String?)` | Stores the FCM token and syncs it. `null` clears it, and the device is then unreachable. |
+| `setPushToken(token: String?)` | Stores the FCM push address (Firebase Installation ID from `onRegistered`, or registration token from `onNewToken`) and syncs it. `null` clears it, and the device is then unreachable. |
 | `setExternalUserId(id: String?)` | Links this installation to your own user id (at most 255 characters). One user can have many installations. `null` clears it. |
 | `setAttributes(map: Map<String, Any?>)` | Merges custom attributes. Values must be `String`, `Number` or `Boolean`; pass datetimes as RFC 3339 strings, and pass `null` to remove an attribute. Only attributes declared on the dashboard are stored; the server drops the others with a warning. |
 | `setTopics(topics: List<String>)` | Replaces the topic list (at most 100; letters, digits and `-_.~%`). Invalid names are dropped. |
@@ -75,7 +98,7 @@ Every request goes over HTTPS to `{baseUrl}/api/sdk/v1/register/`, `/sync/` or `
 | Field | Value | Source |
 |---|---|---|
 | `installation_id` | Random UUID created on first launch, stored on the device and excluded from backup | SDK |
-| `token` | FCM registration token, or `null` | Your app, via `setPushToken` |
+| `token` | Firebase Installation ID or FCM registration token, or `null` | Your app, via `setPushToken` |
 | `notification_permission` | `granted`, `denied`, or `unknown` on Android 6 | SDK, read without prompting |
 | `os_version` | Android version, for example `14` | SDK |
 | `app_version` | Your app's `versionName` | SDK |
@@ -103,7 +126,7 @@ When requests are made:
 
 What to declare depends on what you pass to the SDK. For the SDK's own data:
 
-- **Device or other IDs: collected.** The installation id and the FCM push token. Purpose: app functionality (delivering notifications). Not optional for users of push.
+- **Device or other IDs: collected.** PushPilot's installation id and the FCM push address (Firebase Installation ID or registration token). Purpose: app functionality (delivering notifications). Not optional for users of push.
 - **User IDs: collected**, only if you call `setExternalUserId`. Purpose: app functionality (sending to a signed-in user's devices).
 - **Custom attributes:** declare whatever category matches the values you send with `setAttributes` (for example, purchase history or app interactions).
 - Data is **encrypted in transit** (HTTPS) when you use the default base URL.
@@ -119,7 +142,7 @@ The sample builds without Firebase. To receive pushes, put your own `google-serv
 ./gradlew :sample:installDebug -PpushpilotSdkKey=pp_sdk_...
 ```
 
-Add `-PpushpilotBaseUrl=https://your-server` to point it at another server. Without a `google-services.json` the app runs and syncs, but has no push token.
+Add `-PpushpilotBaseUrl=https://your-server` to point it at another server. Without a `google-services.json` the app runs and syncs, but has no push address.
 
 ## Build
 

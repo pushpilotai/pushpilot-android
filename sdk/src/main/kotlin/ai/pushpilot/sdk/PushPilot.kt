@@ -47,7 +47,11 @@ object PushPilot {
         }
     }
 
-    /** Forwards the FCM token from `onNewToken` and at launch; null clears it. */
+    /**
+     * Forwards the app's FCM push address; null clears it. On firebase-messaging 25.1.0+ with
+     * Firebase Installation IDs enabled, pass the FID from `onRegistered`; on older versions,
+     * the registration token from `onNewToken` and at launch. Pass only one of the two.
+     */
     @JvmStatic
     fun setPushToken(token: String?) = dispatcher.submit { setPushToken(token) }
 

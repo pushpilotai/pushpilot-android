@@ -304,6 +304,16 @@ class EngineTest {
     }
 
     @Test
+    fun firebaseInstallationIdIsSentUnchangedAsTheToken() {
+        val engine = launch()
+        // An FID is 22 base64url characters; the server tells it apart from a registration token.
+        val fid = "cR_-9AbCdEfGhIjKlMnOpQ"
+        engine.setPushToken(fid)
+        settle()
+        assertEquals(fid, last.body.getString("token"))
+    }
+
+    @Test
     fun topicsAreCappedAtOneHundred() {
         val engine = launch()
         engine.setTopics((1..150).map { "t%03d".format(it) })

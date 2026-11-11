@@ -63,7 +63,7 @@ internal class Engine(
         return age !in 0 until DAY_MS
     }
 
-    /** Stores the FCM token; null or blank clears it. */
+    /** Stores the FCM registration token or Firebase Installation ID as given; null or blank clears it. */
     fun setPushToken(token: String?) = setString(TOKEN, token, 4096, "push token")
 
     /** Stores the app's own user id; null or blank clears it. */

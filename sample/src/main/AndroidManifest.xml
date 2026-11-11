@@ -7,6 +7,11 @@
         android:name=".SampleApp"
         android:label="PushPilot Sample">
 
+        <!-- Firebase delivers a Firebase Installation ID to onRegistered instead of a registration token. -->
+        <meta-data
+            android:name="firebase_messaging_installation_id_enabled"
+            android:value="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
