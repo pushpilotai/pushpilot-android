@@ -1,12 +1,16 @@
 package ai.pushpilot.sdk
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -20,20 +24,43 @@ internal fun log(message: String) {
     Log.d("PushPilot", message)
 }
 
-/** SharedPreferences store; the file name is excluded from backup in the library manifest. */
-internal class PrefsStore(context: Context) : Store {
-    // Opened lazily so the first disk read happens on the SDK thread, not in init().
-    private val prefs by lazy { context.getSharedPreferences("ai.pushpilot.sdk", Context.MODE_PRIVATE) }
+/**
+ * JSON file in the no-backup directory, which Android leaves out of Auto Backup and
+ * device-to-device transfer, so a restored or cloned phone never reuses this installation id.
+ */
+internal class FileStore(dir: () -> File) : Store {
+    // Resolved lazily so the first disk access happens on the SDK thread, not in init().
+    private val file by lazy { File(dir(), "ai.pushpilot.sdk.json") }
+    private val values by lazy { load() }
 
     /** Reads one value. */
-    override fun get(key: String): String? = prefs.getString(key, null)
+    override fun get(key: String): String? = values[key]
 
-    /** Writes all pairs in one commit. */
-    @SuppressLint("ApplySharedPref") // Already on the SDK thread; commit makes the write survive process death.
+    /** Applies all pairs, then replaces the file in one rename so a crash leaves the old or the new state. */
     override fun put(vararg pairs: Pair<String, String?>) {
-        val editor = prefs.edit()
-        for ((key, value) in pairs) if (value == null) editor.remove(key) else editor.putString(key, value)
-        editor.commit()
+        for ((key, value) in pairs) if (value == null) values.remove(key) else values[key] = value
+        val temp = File(file.path + ".tmp")
+        FileOutputStream(temp).use {
+            it.write(JSONObject(values).toString().toByteArray())
+            it.fd.sync()
+        }
+        if (!temp.renameTo(file)) throw IOException("could not replace the state file")
+    }
+
+    /** Loads the file; a missing file is a fresh install and an unreadable one starts over. */
+    private fun load(): HashMap<String, String> {
+        val text = try {
+            file.readText()
+        } catch (e: FileNotFoundException) {
+            return HashMap()
+        }
+        return try {
+            val json = JSONObject(text)
+            json.keys().asSequence().associateWithTo(HashMap()) { json.getString(it) }
+        } catch (e: JSONException) {
+            log("state file is corrupt; starting over")
+            HashMap()
+        }
     }
 }
 

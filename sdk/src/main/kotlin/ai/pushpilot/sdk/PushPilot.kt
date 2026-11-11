@@ -24,7 +24,7 @@ object PushPilot {
             if (sdkKey.isBlank()) return log("init ignored: the SDK key is empty")
             val app = context.applicationContext ?: context
             val transport = HttpTransport(baseUrl ?: DEFAULT_BASE_URL, sdkKey.trim())
-            dispatcher.start(Engine(PrefsStore(app), transport, scheduler) { deviceFields(app) })
+            dispatcher.start(Engine(FileStore { app.noBackupFilesDir }, transport, scheduler) { deviceFields(app) })
         } catch (e: Exception) {
             log("init failed: ${e.javaClass.simpleName}")
         }

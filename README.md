@@ -49,11 +49,7 @@ The artifact is not published to a public repository yet. To use it locally, run
 
 4. **Ask for notification permission yourself** (on Android 13+, `POST_NOTIFICATIONS`). The SDK reads the result on every sync. To send a new answer immediately instead of at the next change or launch, call `setPushToken` again after the prompt.
 
-5. **Backup rules.** The SDK keeps its state in the SharedPreferences file `ai.pushpilot.sdk.xml`. Its manifest excludes that file from Auto Backup and device transfer, so a restored or cloned phone never reuses another phone's installation id. If your app sets its own `android:fullBackupContent` or `android:dataExtractionRules`, the manifest merger will report a conflict. Add `tools:replace="android:fullBackupContent,android:dataExtractionRules"` to your `<application>`, and add the following line to your rules (inside `<cloud-backup>` and `<device-transfer>` for the Android 12+ file):
-
-   ```xml
-   <exclude domain="sharedpref" path="ai.pushpilot.sdk.xml" />
-   ```
+Backups need no setup. The SDK keeps its state in `ai.pushpilot.sdk.json` in the app's no-backup directory (`Context.getNoBackupFilesDir()`). Android always leaves that directory out of Auto Backup and device-to-device transfer, so a restored or cloned phone never reuses another phone's installation id. Your own backup rules don't need to mention it, and the SDK adds nothing to your manifest except the `INTERNET` permission.
 
 The `sample/` app shows all of the above.
 
