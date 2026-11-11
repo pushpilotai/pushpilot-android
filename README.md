@@ -47,7 +47,7 @@ The artifact is not published to a public repository yet. To use it locally, run
 
 3. **Identify the user** after login with `PushPilot.setExternalUserId(userId)` and call `PushPilot.logout()` when they log out.
 
-4. **Ask for notification permission yourself** (on Android 13+, `POST_NOTIFICATIONS`). The SDK reads the result on every sync. To send a new answer immediately instead of at the next change or launch, call `setPushToken` again after the prompt.
+4. **Ask for notification permission yourself** (on Android 13+, `POST_NOTIFICATIONS`). The SDK never prompts. It reads the current state each time one of your activities resumes, including when the permission dialog closes, so a grant or a revoke in Settings is sent without any extra code.
 
 Backups need no setup. The SDK keeps its state in `ai.pushpilot.sdk.json` in the app's no-backup directory (`Context.getNoBackupFilesDir()`). Android always leaves that directory out of Auto Backup and device-to-device transfer, so a restored or cloned phone never reuses another phone's installation id. Your own backup rules don't need to mention it, and the SDK adds nothing to your manifest except the `INTERNET` permission.
 
@@ -95,6 +95,7 @@ When requests are made:
 
 - **First launch:** `register`, about 2 seconds after `init`.
 - **After any setter call:** one `sync`, about 2 seconds later. Several calls within that window are sent together.
+- **When an activity resumes:** the same check as at launch, about 2 seconds later, so a permission change made mid-session is sent. If nothing changed, it resyncs at most once a day. Before the first successful `register`, and after `forget()`, resuming sends nothing.
 - **At each launch:** a `sync` if anything changed since the last accepted one (including app version, OS version, locale, time zone and permission), or if the last accepted one is more than 24 hours old. Otherwise nothing is sent.
 - **On failure:** offline, timeout or server error is retried with exponential backoff (1 second doubling to 5 minutes, randomised). A `429` waits at least the server's `Retry-After`. Other `4xx` answers are not retried; the next change or launch tries again. A pending change is kept on disk, so it is still sent if the app is killed first.
 

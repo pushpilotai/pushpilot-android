@@ -1,6 +1,9 @@
 package ai.pushpilot.sdk
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import java.util.concurrent.Executors
 
 /**
@@ -16,6 +19,19 @@ object PushPilot {
     )
     private val dispatcher = Dispatcher(scheduler)
 
+    /** Asks for a sync check whenever an activity resumes, which also happens after the permission dialog closes. */
+    private val foregroundWatcher = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityResumed(activity: Activity) = dispatcher.submit { foreground() }
+
+        // The remaining callbacks are required by the interface and unused.
+        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+        override fun onActivityStarted(activity: Activity) = Unit
+        override fun onActivityPaused(activity: Activity) = Unit
+        override fun onActivityStopped(activity: Activity) = Unit
+        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+        override fun onActivityDestroyed(activity: Activity) = Unit
+    }
+
     /** Starts the SDK with the app's public SDK key. Safe to call more than once and before Firebase starts. */
     @JvmStatic
     @JvmOverloads
@@ -24,7 +40,8 @@ object PushPilot {
             if (sdkKey.isBlank()) return log("init ignored: the SDK key is empty")
             val app = context.applicationContext ?: context
             val transport = HttpTransport(baseUrl ?: DEFAULT_BASE_URL, sdkKey.trim())
-            dispatcher.start(Engine(FileStore { app.noBackupFilesDir }, transport, scheduler) { deviceFields(app) })
+            val engine = Engine(FileStore { app.noBackupFilesDir }, transport, scheduler) { deviceFields(app) }
+            if (dispatcher.start(engine) && app is Application) app.registerActivityLifecycleCallbacks(foregroundWatcher)
         } catch (e: Exception) {
             log("init failed: ${e.javaClass.simpleName}")
         }
@@ -70,10 +87,13 @@ internal class Dispatcher(private val scheduler: Scheduler) {
     private var engine: Engine? = null
     private val queued = ArrayList<Engine.() -> Unit>()
 
-    /** Installs the engine once and replays queued calls after its start; later calls are ignored. */
+    /** Installs the engine once and replays queued calls after its start; returns false if already started. */
     @Synchronized
-    fun start(engine: Engine) {
-        if (this.engine != null) return log("init already called; ignored")
+    fun start(engine: Engine): Boolean {
+        if (this.engine != null) {
+            log("init already called; ignored")
+            return false
+        }
         this.engine = engine
         val pending = queued.toList()
         queued.clear()
@@ -81,6 +101,7 @@ internal class Dispatcher(private val scheduler: Scheduler) {
             engine.start()
             pending.forEach { engine.it() }
         }
+        return true
     }
 
     /** Runs [call] on the SDK thread, or queues it until init. */

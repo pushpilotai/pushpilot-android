@@ -38,12 +38,6 @@ class MainActivity : Activity() {
         }
     }
 
-    /** Re-forwards the token so the new permission state is synced now rather than at next launch. */
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        (application as SampleApp).forwardToken()
-    }
-
     /** A button that runs [onClick]. */
     private fun button(label: String, onClick: () -> Unit) = Button(this).apply {
         text = label

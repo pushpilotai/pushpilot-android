@@ -310,6 +310,57 @@ class EngineTest {
         settle()
         assertEquals(100, last.body.getJSONArray("topics").length())
     }
+
+    @Test
+    fun foregroundSendsNothingWhenUnchangedWithinADay() {
+        val engine = launch()
+        settle()
+        repeat(3) {
+            scheduler.advance(60 * 60 * 1000L)
+            engine.foreground()
+            settle()
+        }
+        assertEquals(1, transport.calls.size)
+    }
+
+    @Test
+    fun foregroundReportsAPermissionChangeInOneCoalescedSync() {
+        val engine = launch()
+        settle()
+        device["notification_permission"] = "denied"
+        // Switching activities resumes several in a row.
+        repeat(3) { engine.foreground() }
+        scheduler.advance(Engine.COALESCE_MS - 1)
+        assertEquals(1, transport.calls.size)
+        settle()
+        assertEquals(2, transport.calls.size)
+        assertEquals("sync", last.path)
+        assertEquals("denied", last.body.getString("notification_permission"))
+    }
+
+    @Test
+    fun foregroundResyncsWhenTheProcessOutlivesADay() {
+        val engine = launch()
+        settle()
+        scheduler.advance(Engine.DAY_MS)
+        engine.foreground()
+        settle()
+        assertEquals(2, transport.calls.size)
+        assertEquals("sync", last.path)
+    }
+
+    @Test
+    fun foregroundAfterForgetRegistersNothing() {
+        val engine = launch()
+        settle()
+        engine.forget()
+        settle()
+        device["notification_permission"] = "denied"
+        scheduler.advance(Engine.DAY_MS)
+        engine.foreground()
+        settle()
+        assertEquals(listOf("register", "forget"), transport.calls.map { it.path })
+    }
 }
 
 class DispatcherTest {
@@ -325,9 +376,9 @@ class DispatcherTest {
         scheduler.advance(60_000)
         assertTrue(store.values.isEmpty())
         val engine = Engine(store, transport, scheduler, Random(1)) { emptyMap() }
-        dispatcher.start(engine)
-        // A second init is ignored.
-        dispatcher.start(Engine(FakeStore(), transport, scheduler, Random(1)) { emptyMap() })
+        assertTrue(dispatcher.start(engine))
+        // A second init is ignored, so the foreground watcher is registered only once.
+        assertFalse(dispatcher.start(Engine(FakeStore(), transport, scheduler, Random(1)) { emptyMap() }))
         scheduler.advance(60_000)
         assertEquals(1, transport.calls.size)
         assertEquals("register", transport.calls[0].path)

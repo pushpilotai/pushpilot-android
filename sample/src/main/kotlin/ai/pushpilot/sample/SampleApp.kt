@@ -15,7 +15,7 @@ class SampleApp : Application() {
     }
 
     /** Hands the app's current FCM token to PushPilot; skipped when Firebase is not configured. */
-    fun forwardToken() {
+    private fun forwardToken() {
         if (FirebaseApp.getApps(this).isEmpty()) {
             Log.w("PushPilotSample", "No google-services.json, so Firebase is not configured and there is no push token")
             return

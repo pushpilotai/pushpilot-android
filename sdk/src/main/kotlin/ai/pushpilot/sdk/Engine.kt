@@ -44,10 +44,23 @@ internal class Engine(
     /** Creates the installation id on first launch, then syncs if anything changed or the last sync is a day old. */
     fun start() {
         if (store.get(ID) == null) store.put(ID to newId())
+        if (stale()) store.put(SENT to null)
+        kick()
+    }
+
+    /** On app foreground: picks up a permission change, or resyncs if the last sync is a day old. */
+    fun foreground() {
+        // Never accepted (first launch, or just forgotten): launch and setters handle registering.
+        if (store.get(SYNCED_AT) == null) return
+        if (stale()) store.put(SENT to null)
+        kick()
+    }
+
+    /** True when there is no accepted sync from the last 24 hours. */
+    private fun stale(): Boolean {
         val age = scheduler.now() - (store.get(SYNCED_AT)?.toLongOrNull() ?: 0L)
         // A negative age means the clock moved back; treat it as stale too.
-        if (age !in 0 until DAY_MS) store.put(SENT to null)
-        kick()
+        return age !in 0 until DAY_MS
     }
 
     /** Stores the FCM token; null or blank clears it. */
