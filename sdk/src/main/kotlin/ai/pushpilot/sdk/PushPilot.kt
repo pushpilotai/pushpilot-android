@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import org.json.JSONException
@@ -22,6 +23,17 @@ object PushPilot {
         Executors.newSingleThreadScheduledExecutor { Thread(it, "PushPilot").apply { isDaemon = true } },
     )
     private val dispatcher = Dispatcher(scheduler)
+
+    /** The app's handler for tapped links; null lets the SDK open them. Read on the main thread at each tap. */
+    @Volatile
+    internal var linkHandler: LinkHandler? = null
+        private set
+
+    /** Receives the link of a tapped PushPilot notification; see [setLinkHandler]. */
+    fun interface LinkHandler {
+        /** Called on the main thread with the tapped button's link, or the push's own link. */
+        fun onLink(link: Uri)
+    }
 
     /** Asks for a sync check whenever an activity resumes, which also happens after the permission dialog closes. */
     private val foregroundWatcher = object : Application.ActivityLifecycleCallbacks {
@@ -111,6 +123,28 @@ object PushPilot {
             log("handleMessage failed: ${e.javaClass.simpleName}")
         }
         return true
+    }
+
+    /**
+     * Sets who opens the links of tapped PushPilot notifications; null goes back to the default.
+     *
+     * - The handler receives the tapped button's `url`, or the push's `url` for a tap on the
+     *   notification itself, on the main thread, once per tap. The SDK opens the app's launcher
+     *   activity first (with the tap's extras, see [tappedNotification]), so the handler can route
+     *   inside the app. It is not called for a button without a `url` or a push without one.
+     * - It returns nothing: once set, it owns every link and the SDK never opens one as well.
+     * - With no handler set, the SDK opens the link with an `ACTION_VIEW` intent, or the app when
+     *   nothing on the device opens it.
+     * - The handler set at the moment the tap is handled decides; links are not held for a handler set
+     *   later. Android creates the `Application`, running its content providers and `onCreate`, before
+     *   the tap is handled, also when the tap launches a killed app, so a handler set there gets that
+     *   tap too; if none is set by then, the SDK opens that link. Either way it is opened once.
+     *
+     * The click is recorded whether or not a handler is set.
+     */
+    @JvmStatic
+    fun setLinkHandler(handler: LinkHandler?) {
+        linkHandler = handler
     }
 
     /**

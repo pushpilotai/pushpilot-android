@@ -10,11 +10,17 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
 class MainActivity : Activity() {
+    private companion object {
+        /** Whether the sample's link handler is set; kept per process, like the handler. */
+        var routeLinks = false
+    }
+
     /** Builds a plain screen with one button per SDK call and asks for notification permission. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +40,15 @@ class MainActivity : Activity() {
         layout.addView(button("Log out") { PushPilot.logout() })
         layout.addView(button("Forget this device") { PushPilot.forget() })
         layout.addView(button("Show a test push") { PushPilot.handleMessage(this, testPush()) })
-        // What the app receives when a PushPilot notification is opened: the push's data as extras.
+        val links = button(linkLabel()) {}
+        links.setOnClickListener {
+            // Lasts until the process dies; an app sets its handler in Application.onCreate to also get taps that launch it.
+            routeLinks = !routeLinks
+            PushPilot.setLinkHandler(if (routeLinks) PushPilot.LinkHandler { showLink(it.toString()) } else null)
+            links.text = linkLabel()
+        }
+        layout.addView(links)
+        // What the app receives when a PushPilot notification is opened: its id and data.
         val tapped = PushPilot.tappedNotification(intent)
         layout.addView(TextView(this).apply { text = "Opened from notification: ${tapped?.notificationId ?: "-"}, order_id: ${tapped?.data?.get("order_id") ?: "-"}" })
         setContentView(layout)
@@ -59,6 +73,12 @@ class MainActivity : Activity() {
             .put("data", JSONObject().put("order_id", "42"))
         return mapOf("source" to "pushpilot", "pushpilot" to push.toString())
     }
+
+    /** The link toggle's label for the current mode. */
+    private fun linkLabel() = if (routeLinks) "Links: shown by the app (tap to let the SDK open them)" else "Links: opened by the SDK (tap to show them in the app)"
+
+    /** What the sample's link handler does with a tapped link: shows it instead of opening it. */
+    private fun showLink(link: String) = Toast.makeText(applicationContext, "Link from push: $link", Toast.LENGTH_LONG).show()
 
     /** A button that runs [onClick]. */
     private fun button(label: String, onClick: () -> Unit) = Button(this).apply {

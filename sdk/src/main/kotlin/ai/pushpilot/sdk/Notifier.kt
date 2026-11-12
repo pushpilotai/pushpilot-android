@@ -158,16 +158,35 @@ internal object Notifier {
     }
 }
 
-/** No-UI activity behind body taps and link buttons: records the click, then opens the link or the app. */
+/**
+ * Where a tap goes, once: without a link it opens the app. With a link and a [handler] set, the app
+ * is opened and the handler gets the link; without one, the SDK opens the link, or the app when nothing
+ * can open the link. The link is never both handed over and opened.
+ */
+internal fun routeTap(url: String?, handler: ((String) -> Unit)?, openApp: () -> Unit, openLink: (String) -> Boolean) {
+    when {
+        url == null -> openApp()
+        handler != null -> {
+            openApp()
+            handler(url)
+        }
+        !openLink(url) -> openApp()
+    }
+}
+
+/** No-UI activity behind body taps and link buttons: records the click, then routes the link (see [routeTap]). */
 internal class TapActivity : Activity() {
     /** Does all its work here and finishes before it would ever draw. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        try {
-            Notifier.recordTap(this, intent)
-            open(intent.getStringExtra(Notifier.EXTRA_URL), tapExtras(intent))
-        } catch (e: Exception) {
-            log("tap failed: ${e.javaClass.simpleName}")
+        // A recreated instance already handled its tap; handling it again would count and open it twice.
+        if (savedInstanceState == null) {
+            try {
+                Notifier.recordTap(this, intent)
+                open(intent.getStringExtra(Notifier.EXTRA_URL), tapExtras(intent))
+            } catch (e: Exception) {
+                log("tap failed: ${e.javaClass.simpleName}")
+            }
         }
         finish()
     }
@@ -178,19 +197,29 @@ internal class TapActivity : Activity() {
         putString(Notifier.EXTRA_DATA, intent.getStringExtra(Notifier.EXTRA_DATA))
     }
 
-    /** Opens [url], or the launcher activity when there is none or nothing handles it; [data] holds the tap extras. */
-    private fun open(url: String?, data: Bundle) {
-        // CLEAR_TOP so an already-open launcher activity is recreated with the new extras instead of only brought forward.
-        val launcher = packageManager.getLaunchIntentForPackage(packageName)
-            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)?.putExtras(data)
-        if (url != null) {
-            try {
-                return startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtras(data))
-            } catch (e: ActivityNotFoundException) {
-                log("nothing opens the push link; opening the app")
-            }
-        }
-        launcher?.let { startActivity(it) }
+    /** Routes [url] with the handler set right now; [extras] go on whichever activity is opened. */
+    private fun open(url: String?, extras: Bundle) {
+        val handler = PushPilot.linkHandler
+        routeTap(
+            url,
+            handler?.let { { link: String -> it.onLink(Uri.parse(link)) } },
+            openApp = {
+                // CLEAR_TOP so an already-open launcher activity is recreated with the new extras instead of only brought forward.
+                packageManager.getLaunchIntentForPackage(packageName)
+                    ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    ?.putExtras(extras)
+                    ?.let { startActivity(it) }
+            },
+            openLink = { link ->
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtras(extras))
+                    true
+                } catch (e: ActivityNotFoundException) {
+                    log("nothing opens the push link; opening the app")
+                    false
+                }
+            },
+        )
     }
 }
 
