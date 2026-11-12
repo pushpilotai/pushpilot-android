@@ -17,6 +17,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -79,14 +80,13 @@ internal object Notifier {
     private fun pendingIntent(context: Context, push: Push, buttonId: String?): PendingIntent {
         val tap = push.tap(buttonId)
         val dismiss = tap is Tap.Dismiss
-        val data = Bundle().apply { for ((k, v) in push.data) putString(k, v) }
         val intent = Intent(context, if (dismiss) ActionReceiver::class.java else TapActivity::class.java)
             // A unique data URI keeps each notification's and button's PendingIntent separate.
             .setData(Uri.Builder().scheme("pushpilot").authority(push.notificationId).appendPath(buttonId ?: "body").build())
             .putExtra(EXTRA_NOTIFICATION_ID, push.notificationId)
             .putExtra(EXTRA_BUTTON_ID, buttonId)
             .putExtra(EXTRA_URL, (tap as? Tap.OpenUrl)?.url)
-            .putExtra(EXTRA_DATA, data)
+            .putExtra(EXTRA_DATA, JSONObject(push.data).toString())
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         return if (dismiss) {
             PendingIntent.getBroadcast(context, 0, intent, flags)
@@ -165,14 +165,20 @@ internal class TapActivity : Activity() {
         super.onCreate(savedInstanceState)
         try {
             Notifier.recordTap(this, intent)
-            open(intent.getStringExtra(Notifier.EXTRA_URL), intent.getBundleExtra(Notifier.EXTRA_DATA) ?: Bundle())
+            open(intent.getStringExtra(Notifier.EXTRA_URL), tapExtras(intent))
         } catch (e: Exception) {
             log("tap failed: ${e.javaClass.simpleName}")
         }
         finish()
     }
 
-    /** Opens [url], or the launcher activity when there is none or nothing handles it; [data] goes along as extras. */
+    /** Only the extras [PushPilot.tappedNotification] reads, so nothing of the push lands in the app's own extra names. */
+    private fun tapExtras(intent: Intent) = Bundle().apply {
+        putString(Notifier.EXTRA_NOTIFICATION_ID, intent.getStringExtra(Notifier.EXTRA_NOTIFICATION_ID))
+        putString(Notifier.EXTRA_DATA, intent.getStringExtra(Notifier.EXTRA_DATA))
+    }
+
+    /** Opens [url], or the launcher activity when there is none or nothing handles it; [data] holds the tap extras. */
     private fun open(url: String?, data: Bundle) {
         // CLEAR_TOP so an already-open launcher activity is recreated with the new extras instead of only brought forward.
         val launcher = packageManager.getLaunchIntentForPackage(packageName)

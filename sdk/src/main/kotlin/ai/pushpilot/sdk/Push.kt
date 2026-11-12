@@ -88,7 +88,7 @@ internal class Push(
         }
 
         /** The customer's flat key-value map; null values are skipped. */
-        private fun customData(json: JSONObject?): Map<String, String> {
+        fun customData(json: JSONObject?): Map<String, String> {
             val out = HashMap<String, String>()
             for (key in json?.keys() ?: return out) json.str(key)?.let { out[key] = it }
             return out

@@ -35,7 +35,8 @@ class MainActivity : Activity() {
         layout.addView(button("Forget this device") { PushPilot.forget() })
         layout.addView(button("Show a test push") { PushPilot.handleMessage(this, testPush()) })
         // What the app receives when a PushPilot notification is opened: the push's data as extras.
-        layout.addView(TextView(this).apply { text = "Opened with order_id: ${intent.getStringExtra("order_id") ?: "-"}" })
+        val tapped = PushPilot.tappedNotification(intent)
+        layout.addView(TextView(this).apply { text = "Opened from notification: ${tapped?.notificationId ?: "-"}, order_id: ${tapped?.data?.get("order_id") ?: "-"}" })
         setContentView(layout)
         // The app asks for permission; the SDK only reports the result.
         if (Build.VERSION.SDK_INT >= 33 &&

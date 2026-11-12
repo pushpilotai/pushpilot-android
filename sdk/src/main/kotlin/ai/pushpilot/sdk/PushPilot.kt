@@ -3,8 +3,11 @@ package ai.pushpilot.sdk
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.os.Looper
+import org.json.JSONException
+import org.json.JSONObject
 import java.util.concurrent.Executors
 
 /**
@@ -110,9 +113,39 @@ object PushPilot {
         return true
     }
 
+    /**
+     * The PushPilot notification whose tap started [intent], with its id and custom data; null for
+     * any other intent. Read it from the intent your launcher activity gets in `onCreate`, or in
+     * `onNewIntent` if it is `singleTop`, and from the intent of the activity a push's own link opens.
+     */
+    @JvmStatic
+    fun tappedNotification(intent: Intent?): TappedNotification? = try {
+        intent?.let { TappedNotification.from(it.getStringExtra(Notifier.EXTRA_NOTIFICATION_ID), it.getStringExtra(Notifier.EXTRA_DATA)) }
+    } catch (e: Exception) {
+        // A malformed extras bundle from another app must not crash the caller.
+        null
+    }
+
     /** Queues a tracking event from the SDK's own tap handlers. */
     internal fun track(notificationId: String, type: String, buttonId: String?) =
         dispatcher.submit { track(notificationId, type, buttonId) }
+}
+
+/** A tapped PushPilot notification, from [PushPilot.tappedNotification]. */
+class TappedNotification internal constructor(
+    /** PushPilot's id for the notification, the same one its events carry. */
+    val notificationId: String,
+    /** The push's custom data; empty when it had none. */
+    val data: Map<String, String>,
+) {
+    internal companion object {
+        /** Builds it from the SDK's extras; null without a notification id, so the intent did not come from a tap. */
+        fun from(notificationId: String?, data: String?): TappedNotification? {
+            val id = notificationId?.takeIf { it.isNotBlank() } ?: return null
+            val json = try { data?.let { JSONObject(it) } } catch (e: JSONException) { null }
+            return TappedNotification(id, Push.customData(json))
+        }
+    }
 }
 
 /** Holds calls made before init and runs every call on the SDK thread once the engine exists. */
