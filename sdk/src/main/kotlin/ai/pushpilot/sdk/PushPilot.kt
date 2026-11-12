@@ -92,7 +92,8 @@ object PushPilot {
     fun handleMessage(context: Context, data: Map<String, String>): Boolean {
         if (!Push.isOurs(data)) return false
         try {
-            val push = Push.parse(data) ?: return true.also { log("PushPilot push without a notification id or title; not shown") }
+            // Ours but unreadable: swallowed, so the app never shows it as its own push. parse logs why.
+            val push = Push.parse(data) ?: return true
             val app = context.applicationContext ?: context
             dispatcher.submit { track(push.notificationId, "delivered") }
             val show = {

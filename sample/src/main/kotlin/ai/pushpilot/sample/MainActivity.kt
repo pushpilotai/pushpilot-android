@@ -10,6 +10,8 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 
 class MainActivity : Activity() {
@@ -43,17 +45,19 @@ class MainActivity : Activity() {
         }
     }
 
-    /** A payload v2 message as the server sends it, for checking display and taps without a server. */
-    private fun testPush() = mapOf(
-        "source" to "pushpilot",
-        // A fresh id each time, so every tap shows a new notification; its events reach the server as unknown ids.
-        "notification_id" to UUID.randomUUID().toString(),
-        "title" to "नमस्ते! आपका ऑर्डर भेज दिया गया है",
-        "body" to "مرحبا · உங்கள் ஆர்டர் வந்துகொண்டிருக்கிறது 🚚",
-        "image_url" to "https://picsum.photos/id/1015/1024/512",
-        "buttons" to """[{"id":"track","label":"ट्रैक करें","url":"https://pushpilot.ai"},{"id":"later","label":"बाद में"}]""",
-        "data" to """{"order_id":"42"}""",
-    )
+    /** A PushPilot message as the server sends it, for checking display and taps without a server. */
+    private fun testPush(): Map<String, String> {
+        val push = JSONObject()
+            .put("source", "pushpilot")
+            // A fresh id each time, so every tap shows a new notification; its events reach the server as unknown ids.
+            .put("notification_id", UUID.randomUUID().toString())
+            .put("title", "नमस्ते! आपका ऑर्डर भेज दिया गया है")
+            .put("body", "مرحبا · உங்கள் ஆர்டர் வந்துகொண்டிருக்கிறது 🚚")
+            .put("image_url", "https://picsum.photos/id/1015/1024/512")
+            .put("buttons", JSONArray("""[{"id":"track","label":"ट्रैक करें","url":"https://pushpilot.ai"},{"id":"later","label":"बाद में"}]"""))
+            .put("data", JSONObject().put("order_id", "42"))
+        return mapOf("source" to "pushpilot", "pushpilot" to push.toString())
+    }
 
     /** A button that runs [onClick]. */
     private fun button(label: String, onClick: () -> Unit) = Button(this).apply {

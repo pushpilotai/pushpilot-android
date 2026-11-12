@@ -1,6 +1,7 @@
 package ai.pushpilot.sdk
 
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 
 /** One action button of a push; without a [url] it only dismisses the notification. */
@@ -19,8 +20,9 @@ internal sealed class Tap {
 }
 
 /**
- * A payload v2 push as the server puts it in the FCM data map: every value is a string,
- * `buttons` and `data` are JSON strings, and empty fields are left out.
+ * A PushPilot push. The FCM data map carries exactly `source` = `pushpilot` and `pushpilot`, a
+ * JSON string holding one flat object: `notification_id`, `title`, `body`, `image_url`, `url`,
+ * `buttons` (a list of `{id, label, url?}`) and `data` (string to string). Empty fields are left out.
  */
 internal class Push(
     val notificationId: String,
@@ -41,45 +43,42 @@ internal class Push(
     companion object {
         const val MAX_BUTTONS = 3
 
-        /** True when the data map came from PushPilot. */
+        /** True when the data map came from PushPilot, whether or not its `pushpilot` value can be read. */
         fun isOurs(data: Map<String, String>) = data["source"] == "pushpilot"
 
         /**
-         * Parses a PushPilot data map; null when it is not ours or lacks the id or title needed to
-         * show and track it. Malformed optional fields are dropped rather than losing the push.
+         * Parses a PushPilot data map; null when it is not ours, its `pushpilot` value is not a JSON
+         * object, or it lacks the id or title needed to show and track it. The log never carries
+         * the push's contents. Malformed optional fields are dropped rather than losing the push.
          */
         fun parse(data: Map<String, String>): Push? {
             if (!isOurs(data)) return null
-            val id = data["notification_id"].clean() ?: return null
-            val title = data["title"].clean() ?: return null
+            val json = try {
+                JSONObject(data["pushpilot"] ?: return null.also { log("PushPilot push without its pushpilot value; not shown") })
+            } catch (e: JSONException) {
+                return null.also { log("PushPilot push whose pushpilot value is not a JSON object; not shown") }
+            }
+            val id = json.str("notification_id") ?: return null.also { log("PushPilot push without a notification id; not shown") }
+            val title = json.str("title") ?: return null.also { log("PushPilot push without a title; not shown") }
             return Push(
                 notificationId = id,
                 title = title,
-                body = data["body"].clean(),
-                imageUrl = data["image_url"].clean()?.takeIf { it.startsWith("https://") },
-                url = data["url"].clean(),
-                buttons = buttons(data["buttons"]),
-                data = customData(data["data"]),
+                body = json.str("body"),
+                imageUrl = json.str("image_url")?.takeIf { it.startsWith("https://") },
+                url = json.str("url"),
+                buttons = buttons(json.optJSONArray("buttons")),
+                data = customData(json.optJSONObject("data")),
             )
         }
 
-        /** Non-blank value or null. */
-        private fun String?.clean() = this?.takeIf { it.isNotBlank() }
-
         /** A field as a non-blank string; JSON null and missing keys are null, not "null". */
-        private fun JSONObject.str(key: String) = if (isNull(key)) null else optString(key).clean()
+        private fun JSONObject.str(key: String) = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
 
-        /** Up to three buttons from the JSON string; entries without an id or label are skipped. */
-        private fun buttons(raw: String?): List<Button> {
-            val list = try {
-                JSONArray(raw ?: return emptyList())
-            } catch (e: Exception) {
-                log("push buttons are not a JSON list; shown without buttons")
-                return emptyList()
-            }
+        /** Up to three buttons; entries without an id or label are skipped. */
+        private fun buttons(list: JSONArray?): List<Button> {
             val out = ArrayList<Button>()
-            for (i in 0 until list.length()) {
-                val item = list.optJSONObject(i) ?: continue
+            for (i in 0 until (list?.length() ?: 0)) {
+                val item = list!!.optJSONObject(i) ?: continue
                 val id = item.str("id") ?: continue
                 val label = item.str("label") ?: continue
                 out += Button(id, label, item.str("url"))
@@ -88,16 +87,10 @@ internal class Push(
             return out
         }
 
-        /** The customer's flat key-value map from its JSON string; empty when malformed. */
-        private fun customData(raw: String?): Map<String, String> {
-            val json = try {
-                JSONObject(raw ?: return emptyMap())
-            } catch (e: Exception) {
-                log("push data is not a JSON object; ignored")
-                return emptyMap()
-            }
+        /** The customer's flat key-value map; null values are skipped. */
+        private fun customData(json: JSONObject?): Map<String, String> {
             val out = HashMap<String, String>()
-            for (key in json.keys()) json.str(key)?.let { out[key] = it }
+            for (key in json?.keys() ?: return out) json.str(key)?.let { out[key] = it }
             return out
         }
     }
