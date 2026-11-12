@@ -119,7 +119,7 @@ internal fun deviceFields(context: Context): Map<String, String> = mapOf(
 )
 
 /** The permission state the app already obtained; never asks for it. */
-private fun notificationPermission(context: Context): String = when {
+internal fun notificationPermission(context: Context): String = when {
     Build.VERSION.SDK_INT >= 33 ->
         if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) "granted" else "denied"
     Build.VERSION.SDK_INT >= 24 ->

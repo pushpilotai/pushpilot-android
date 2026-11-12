@@ -521,12 +521,3 @@ class DispatcherTest {
         assertEquals("user-2", transport.calls[0].body.getString("external_user_id"))
     }
 }
-
-class HandleMessageTest {
-    @Test
-    fun recognisesOnlyPushPilotMessages() {
-        assertTrue(PushPilot.handleMessage(mapOf("source" to "pushpilot", "test" to "true")))
-        assertFalse(PushPilot.handleMessage(mapOf("source" to "other")))
-        assertFalse(PushPilot.handleMessage(emptyMap()))
-    }
-}

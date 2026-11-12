@@ -12,8 +12,8 @@ class SampleMessagingService : FirebaseMessagingService() {
     /** Forwards the Firebase Installation ID at startup, after register() and whenever it changes. */
     override fun onRegistered(installationId: String) = PushPilot.setPushToken(installationId)
 
-    /** Tells PushPilot pushes apart from the app's other pushes. */
+    /** PushPilot shows its own pushes; anything else is the app's to handle. */
     override fun onMessageReceived(message: RemoteMessage) {
-        if (PushPilot.handleMessage(message.data)) Log.d("PushPilotSample", "Received a PushPilot push")
+        if (!PushPilot.handleMessage(this, message.data)) Log.d("PushPilotSample", "Received a push that is not from PushPilot")
     }
 }

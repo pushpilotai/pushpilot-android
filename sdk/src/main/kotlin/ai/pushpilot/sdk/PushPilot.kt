@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.os.Looper
 import java.util.concurrent.Executors
 
 /**
@@ -81,9 +82,36 @@ object PushPilot {
     @JvmStatic
     fun forget() = dispatcher.submit { forget() }
 
-    /** True when a received push came from PushPilot. Pass `RemoteMessage.data`; makes no network call. */
+    /**
+     * Call from `onMessageReceived` with `RemoteMessage.data`. For a PushPilot push it reports
+     * delivery, shows the notification (with image and buttons) and returns true; for any
+     * other push it does nothing and returns false. Off the main thread it waits for the image
+     * download, as FCM expects; on the main thread it shows the notification in the background.
+     */
     @JvmStatic
-    fun handleMessage(data: Map<String, String>): Boolean = data["source"] == "pushpilot"
+    fun handleMessage(context: Context, data: Map<String, String>): Boolean {
+        if (!Push.isOurs(data)) return false
+        try {
+            val push = Push.parse(data) ?: return true.also { log("PushPilot push without a notification id or title; not shown") }
+            val app = context.applicationContext ?: context
+            dispatcher.submit { track(push.notificationId, "delivered") }
+            val show = {
+                try {
+                    Notifier.show(app, push)
+                } catch (e: Exception) {
+                    log("push not shown: ${e.javaClass.simpleName}")
+                }
+            }
+            if (Looper.myLooper() == Looper.getMainLooper()) Thread { show() }.start() else show()
+        } catch (e: Exception) {
+            log("handleMessage failed: ${e.javaClass.simpleName}")
+        }
+        return true
+    }
+
+    /** Queues a tracking event from the SDK's own tap handlers. */
+    internal fun track(notificationId: String, type: String, buttonId: String?) =
+        dispatcher.submit { track(notificationId, type, buttonId) }
 }
 
 /** Holds calls made before init and runs every call on the SDK thread once the engine exists. */
