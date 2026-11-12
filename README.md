@@ -19,7 +19,7 @@ The artifact is not published to a public repository yet. To use it locally, run
 
 ## Integrate
 
-1. **Initialise in `Application.onCreate`** with the SDK key from the dashboard's Apps page. You can call it before Firebase initialises. Calling it again does nothing, and calls made before it are queued until it runs.
+1. **Initialise in `Application.onCreate`** with the SDK key from the dashboard's Apps page. You can call it before Firebase initialises. Calling it again does nothing, and calls made before it are queued until it runs. The key and base URL are saved on the device. If a push or a tap reaches a process where `init` has not run yet (a framework that initialises later, for example), the SDK starts from those saved values, so the notification still shows and its events are sent. When `init` then runs, its values replace the saved ones.
 
    ```kotlin
    class MyApp : Application() {
@@ -74,7 +74,7 @@ The artifact is not published to a public repository yet. To use it locally, run
 
 ## Notifications
 
-PushPilot sends Android a data-only, high-priority FCM message, so `onMessageReceived` runs whether the app is open or not, and `handleMessage` builds the notification:
+PushPilot sends Android a data-only, high-priority FCM message, so `onMessageReceived` runs whether the app is open or not, and `handleMessage` builds the notification. Its data map has exactly two keys: `source` (`pushpilot`) and `pushpilot`, a JSON string holding the whole push. Since PushPilot's fields are nested inside it, none of them collides with your own push handling. A message with `source` = `pushpilot` whose `pushpilot` value cannot be read is still claimed (`handleMessage` returns `true`), and nothing is shown. The notification shows:
 
 - Title and body in any script, the image as a big picture (downloaded with a 5-second timeout, at most 3 MB; on any failure the notification is shown without it), and up to three buttons.
 - One notification channel, `pushpilot_default`, created by the SDK with high importance. If the app lacks notification permission, nothing is shown, but delivery is still reported.
@@ -89,11 +89,24 @@ PushPilot sends Android a data-only, high-priority FCM message, so `onMessageRec
 
 **What a tap does.** Tapping the notification opens its link, or your launcher activity when it has none. A button with a link opens that link; a button without one only dismisses the notification. Links can be https or your app's own scheme. Taps go through a small no-UI activity in the SDK that records the click first, so they work on Android 12 and later without notification trampolines.
 
-**What your app receives.** The push's custom `data` map arrives as string extras on the intent that opens your app or the link: `intent.getStringExtra("order_id")`. Your launcher activity is started with `FLAG_ACTIVITY_CLEAR_TOP`, so read the extras in `onCreate`, or in `onNewIntent` if the activity is `singleTop`.
+**Routing links yourself.** To route links inside your app instead, set a handler, as with the iOS SDK's `setLinkHandler`:
+
+```kotlin
+// In Application.onCreate, so it also gets the tap that launches a killed app.
+PushPilot.setLinkHandler { link -> router.open(link) }
+```
+
+With a handler set, a tap on a link opens your launcher activity and then calls the handler with the link (a `Uri`) on the main thread, once per tap. The SDK never opens that link itself. The handler is not called for a button without a link or a push without one. `setLinkHandler(null)` restores the default. The handler set when the tap is handled decides, and links are not held for a handler set later. Android always creates your `Application` (its content providers, then `onCreate`) before the SDK handles the tap, also when the tap launches a killed app. So a handler set there gets that tap. If none is set by then, the SDK opens the link. Either way it is opened once. The click is recorded either way.
+
+**What your app receives.** `PushPilot.tappedNotification(intent)` returns the tapped notification's `notificationId` and its custom `data` map, or `null` for an intent that did not come from a PushPilot tap. It works on the launcher activity's intent and on the intent of the activity the push's link opens. The values travel in the SDK's own extras, `ai.pushpilot.sdk.notification_id` and `ai.pushpilot.sdk.data`, so they never mix with your own extras. Your launcher activity is started with `FLAG_ACTIVITY_CLEAR_TOP`, so read them in `onCreate`, or in `onNewIntent` if the activity is `singleTop`.
+
+```kotlin
+PushPilot.tappedNotification(intent)?.let { showOrder(it.data["order_id"]) }
+```
 
 **Tracking.** The SDK reports two events per notification: `delivered` when the push arrives, and `clicked` when the notification or a button is tapped (with the button's id). They are queued on disk and sent in batches, like syncs.
 
-Backups need no setup. The SDK keeps its state in `ai.pushpilot.sdk.json` in the app's no-backup directory (`Context.getNoBackupFilesDir()`). Android always leaves that directory out of Auto Backup and device-to-device transfer, so a restored or cloned phone never reuses another phone's installation id. Your own backup rules don't need to mention it. The SDK's manifest adds only the `INTERNET` and `POST_NOTIFICATIONS` permissions (declared, never requested), its tap activity and its button receiver.
+Backups need no setup. The SDK keeps its state, including the saved SDK key and base URL, in `ai.pushpilot.sdk.json` in the app's no-backup directory (`Context.getNoBackupFilesDir()`). Android always leaves that directory out of Auto Backup and device-to-device transfer, so a restored or cloned phone never reuses another phone's installation id. Your own backup rules don't need to mention it. The SDK's manifest adds only the `INTERNET` and `POST_NOTIFICATIONS` permissions (declared, never requested), its tap activity and its button receiver.
 
 The `sample/` app shows all of the above.
 
@@ -103,14 +116,16 @@ All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPi
 
 | Method | What it does |
 |---|---|
-| `init(context, sdkKey, baseUrl = null)` | Starts the SDK. `baseUrl` defaults to `PushPilot.DEFAULT_BASE_URL` (`https://pushpilot.ai`); pass your own for a self-hosted server. |
+| `init(context, sdkKey, baseUrl = null)` | Starts the SDK and saves the key and base URL for processes that start without `init`. `baseUrl` defaults to `PushPilot.DEFAULT_BASE_URL` (`https://pushpilot.ai`); pass your own for a self-hosted server. |
 | `setPushToken(token: String?)` | Stores the FCM push address (Firebase Installation ID from `onRegistered`, or registration token from `onNewToken`) and syncs it. `null` clears it, and the device is then unreachable. |
 | `setExternalUserId(id: String?)` | Links this installation to your own user id (at most 255 characters). One user can have many installations. `null` clears it. |
 | `setAttributes(map: Map<String, Any?>)` | Merges custom attributes. Values must be `String`, `Number` or `Boolean`; pass datetimes as RFC 3339 strings, and pass `null` to remove an attribute. Only attributes declared on the dashboard are stored; the server drops the others with a warning. |
 | `setTopics(topics: List<String>)` | Replaces the topic list (at most 100; letters, digits and `-_.~%`). Invalid names are dropped. |
 | `logout()` | Clears the external user id. The device stays registered and keeps receiving pushes. |
-| `forget()` | Deletes this installation from PushPilot and clears all local SDK state. Nothing is sent again until your app next calls a setter or the app next launches, which registers a new installation. To keep a user forgotten, stop calling the SDK for them. |
+| `forget()` | Deletes this installation from PushPilot and clears all local SDK state except the saved SDK key and base URL, which are your app's configuration. Nothing is sent again until your app next calls a setter or the app next launches, which registers a new installation. To keep a user forgotten, stop calling the SDK for them. |
 | `handleMessage(context, data: Map<String, String>): Boolean` | For a PushPilot push (its data has `source` = `pushpilot`), reports delivery, shows the notification and returns `true`. For any other push it does nothing and returns `false`. Off the main thread, as in `onMessageReceived`, it waits for the image; on the main thread it shows the notification in the background. |
+| `setLinkHandler(handler: LinkHandler?)` | Hands the links of tapped notifications to `handler.onLink(link: Uri)` instead of the SDK opening them; `null` restores the default. See "Routing links yourself". |
+| `tappedNotification(intent: Intent?): TappedNotification?` | The notification whose tap started `intent`: `notificationId` and `data`; `null` for any other intent. |
 
 ## What the SDK sends, and when
 
@@ -177,7 +192,7 @@ The sample builds without Firebase. To receive pushes, put your own `google-serv
 
 Add `-PpushpilotBaseUrl=https://your-server` to point it at another server. Without a `google-services.json` the app runs and syncs, but has no push address.
 
-The **Show a test push** button feeds `handleMessage` a built-in payload with an image, two buttons and Hindi, Arabic and Tamil text, so display and taps can be checked without a server. The screen shows the `order_id` it receives when opened from that notification. Its events carry a random notification id that the server does not know.
+The **Show a test push** button feeds `handleMessage` a built-in payload with an image, two buttons and Hindi, Arabic and Tamil text, so display and taps can be checked without a server. The screen shows the notification id and `order_id` that `tappedNotification` returns when opened from a notification. The **Links** button switches between the SDK opening links and a link handler that shows them in a toast. Its events carry a random notification id that the server does not know.
 
 ## Build
 
