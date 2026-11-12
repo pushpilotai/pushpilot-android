@@ -48,19 +48,41 @@ object PushPilot {
         override fun onActivityDestroyed(activity: Activity) = Unit
     }
 
-    /** Starts the SDK with the app's public SDK key. Safe to call more than once and before Firebase starts. */
+    /**
+     * Starts the SDK with the app's public SDK key. Safe to call before Firebase starts; later calls
+     * are ignored. The key and base URL are saved on the device, so in a later process where the app
+     * has not called init yet (a push or a tap that starts a killed app), the SDK starts from them.
+     */
     @JvmStatic
     @JvmOverloads
     fun init(context: Context, sdkKey: String, baseUrl: String? = null) {
         try {
             if (sdkKey.isBlank()) return log("init ignored: the SDK key is empty")
             val app = context.applicationContext ?: context
-            val transport = HttpTransport(baseUrl ?: DEFAULT_BASE_URL, sdkKey.trim())
-            val engine = Engine(FileStore { app.noBackupFilesDir }, transport, scheduler) { deviceFields(app) }
-            if (dispatcher.start(engine) && app is Application) app.registerActivityLifecycleCallbacks(foregroundWatcher)
+            val store = store(app)
+            dispatcher.init(store, sdkKey.trim(), baseUrl ?: DEFAULT_BASE_URL) { engine(app, store) }
         } catch (e: Exception) {
             log("init failed: ${e.javaClass.simpleName}")
         }
+    }
+
+    /** For the SDK's own entry points: without init in this process, starts from the values the last init saved. */
+    internal fun startFromSaved(context: Context) {
+        val app = context.applicationContext ?: context
+        val store = store(app)
+        dispatcher.startFromSaved(store) { engine(app, store) }
+    }
+
+    private var fileStore: FileStore? = null
+
+    /** The one state file of this process, shared by init and the entry points. */
+    @Synchronized
+    private fun store(app: Context): FileStore = fileStore ?: FileStore { app.noBackupFilesDir }.also { fileStore = it }
+
+    /** Creates the engine (once per process) and starts watching for foregrounds. */
+    private fun engine(app: Context, store: Store): Engine {
+        if (app is Application) app.registerActivityLifecycleCallbacks(foregroundWatcher)
+        return Engine(store, HttpTransport(store, DEFAULT_BASE_URL), scheduler) { deviceFields(app) }
     }
 
     /**
@@ -107,6 +129,7 @@ object PushPilot {
     fun handleMessage(context: Context, data: Map<String, String>): Boolean {
         if (!Push.isOurs(data)) return false
         try {
+            startFromSaved(context)
             // Ours but unreadable: swallowed, so the app never shows it as its own push. parse logs why.
             val push = Push.parse(data) ?: return true
             val app = context.applicationContext ?: context
@@ -182,18 +205,50 @@ class TappedNotification internal constructor(
     }
 }
 
-/** Holds calls made before init and runs every call on the SDK thread once the engine exists. */
+/**
+ * Holds calls made before the engine exists and runs every call on the SDK thread once it does.
+ * The engine starts at most once per process: from [init], or from the saved values for a push or
+ * a tap that arrives first. A later [init] still saves its values, which the next request uses.
+ */
 internal class Dispatcher(private val scheduler: Scheduler) {
     private var engine: Engine? = null
+    private var initialized = false
     private val queued = ArrayList<Engine.() -> Unit>()
 
-    /** Installs the engine once and replays queued calls after its start; returns false if already started. */
+    /** Saves [sdkKey] and [baseUrl] for later processes and starts the engine; false when init already ran. */
     @Synchronized
-    fun start(engine: Engine): Boolean {
-        if (this.engine != null) {
+    fun init(store: Store, sdkKey: String, baseUrl: String, create: () -> Engine): Boolean {
+        if (initialized) {
             log("init already called; ignored")
             return false
         }
+        initialized = true
+        // Scheduled before the engine starts, so its first request already uses these values.
+        scheduler.schedule(0) {
+            if (store.get(Engine.SDK_KEY) != sdkKey || store.get(Engine.BASE_URL) != baseUrl) {
+                store.put(Engine.SDK_KEY to sdkKey, Engine.BASE_URL to baseUrl)
+            }
+        }
+        startOnce(create)
+        return true
+    }
+
+    /** Starts the engine from the values an earlier init saved, unless it runs already or nothing was saved. */
+    @Synchronized
+    fun startFromSaved(store: Store, create: () -> Engine) {
+        if (engine != null || initialized) return
+        // The store is read on the SDK thread only.
+        scheduler.schedule(0) {
+            if (store.get(Engine.SDK_KEY) == null) return@schedule log("PushPilot.init has never run on this device; calls wait for it")
+            startOnce(create)
+        }
+    }
+
+    /** Creates the engine if there is none and replays queued calls after its start. */
+    @Synchronized
+    private fun startOnce(create: () -> Engine) {
+        if (engine != null) return
+        val engine = create()
         this.engine = engine
         val pending = queued.toList()
         queued.clear()
@@ -201,10 +256,9 @@ internal class Dispatcher(private val scheduler: Scheduler) {
             engine.start()
             pending.forEach { engine.it() }
         }
-        return true
     }
 
-    /** Runs [call] on the SDK thread, or queues it until init. */
+    /** Runs [call] on the SDK thread, or queues it until the engine exists. */
     @Synchronized
     fun submit(call: Engine.() -> Unit) {
         val engine = engine ?: return run {

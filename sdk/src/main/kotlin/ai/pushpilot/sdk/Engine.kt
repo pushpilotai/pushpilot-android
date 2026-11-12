@@ -242,6 +242,10 @@ internal class Engine(
         const val FORGET = "pending_forget_id"
         const val EVENTS = "pending_events"
 
+        // Saved by init for processes that start without it; app configuration, so forget keeps them.
+        const val SDK_KEY = "sdk_key"
+        const val BASE_URL = "base_url"
+
         /** The character set FCM accepts for topic names, matching the server's check. */
         private val TOPIC = Regex("[A-Za-z0-9._~%-]+")
 

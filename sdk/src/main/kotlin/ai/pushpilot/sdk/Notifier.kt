@@ -69,9 +69,10 @@ internal object Notifier {
         manager.notify(push.notificationId, 0, builder.build())
     }
 
-    /** Records a tap as `clicked` and removes the notification. */
+    /** Records a tap as `clicked` and removes the notification; starts the SDK from saved values if the app has not. */
     fun recordTap(context: Context, intent: Intent) {
         val id = intent.getStringExtra(EXTRA_NOTIFICATION_ID) ?: return
+        PushPilot.startFromSaved(context)
         PushPilot.track(id, "clicked", intent.getStringExtra(EXTRA_BUTTON_ID))
         context.getSystemService(NotificationManager::class.java).cancel(id, 0)
     }

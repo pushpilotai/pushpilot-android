@@ -64,10 +64,12 @@ internal class FileStore(dir: () -> File) : Store {
     }
 }
 
-/** HttpURLConnection transport authenticated by the public SDK key. */
-internal class HttpTransport(private val baseUrl: String, private val sdkKey: String) : Transport {
-    /** POSTs [json]; any I/O failure becomes code -1 so the engine retries it. */
+/** HttpURLConnection transport authenticated by the public SDK key that init saved in [store]. */
+internal class HttpTransport(private val store: Store, private val defaultBaseUrl: String) : Transport {
+    /** POSTs [json] with the saved key and base URL, read each time so a later init applies at once; I/O failures become -1, retried. */
     override fun post(path: String, json: String): Response = try {
+        val sdkKey = store.get(Engine.SDK_KEY) ?: throw IOException("no saved SDK key")
+        val baseUrl = store.get(Engine.BASE_URL) ?: defaultBaseUrl
         val connection = URL("${baseUrl.trimEnd('/')}/api/sdk/v1/$path/").openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"

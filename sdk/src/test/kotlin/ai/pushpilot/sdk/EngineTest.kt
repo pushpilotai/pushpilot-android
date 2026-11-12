@@ -274,6 +274,14 @@ class EngineTest {
     }
 
     @Test
+    fun forgetKeepsTheSavedSdkKeyAndBaseUrl() {
+        store.put(Engine.SDK_KEY to "pp_sdk_a", Engine.BASE_URL to "https://a.example")
+        launch().forget()
+        assertEquals("pp_sdk_a", store.values[Engine.SDK_KEY])
+        assertEquals("https://a.example", store.values[Engine.BASE_URL])
+    }
+
+    @Test
     fun forgetBeforeAnySyncMakesNoServerCall() {
         transport.responses += Response(-1)
         val engine = launch()
@@ -499,25 +507,81 @@ class EventQueueTest {
 }
 
 class DispatcherTest {
+    private val scheduler = FakeScheduler()
+    private val transport = FakeTransport(scheduler)
+    private val store = FakeStore()
+    private val dispatcher = Dispatcher(scheduler)
+    private var created = 0
+
+    /** Engine factory that counts how often the dispatcher creates one. */
+    private val create = {
+        created++
+        Engine(store, transport, scheduler, Random(1)) { emptyMap() }
+    }
+
     @Test
     fun callsBeforeInitAreQueuedAndFlushedAfterStartInOrder() {
-        val scheduler = FakeScheduler()
-        val transport = FakeTransport(scheduler)
-        val store = FakeStore()
-        val dispatcher = Dispatcher(scheduler)
         dispatcher.submit { setPushToken("tok-1") }
         dispatcher.submit { setExternalUserId("user-1") }
         dispatcher.submit { setExternalUserId("user-2") }
         scheduler.advance(60_000)
         assertTrue(store.values.isEmpty())
-        val engine = Engine(store, transport, scheduler, Random(1)) { emptyMap() }
-        assertTrue(dispatcher.start(engine))
-        // A second init is ignored, so the foreground watcher is registered only once.
-        assertFalse(dispatcher.start(Engine(FakeStore(), transport, scheduler, Random(1)) { emptyMap() }))
+        assertTrue(dispatcher.init(store, "pp_sdk_a", "https://a.example", create))
+        // A second init is ignored and keeps the first one's values.
+        assertFalse(dispatcher.init(store, "pp_sdk_b", "https://b.example", create))
         scheduler.advance(60_000)
+        assertEquals(1, created)
+        assertEquals("pp_sdk_a", store.values[Engine.SDK_KEY])
+        assertEquals("https://a.example", store.values[Engine.BASE_URL])
         assertEquals(1, transport.calls.size)
         assertEquals("register", transport.calls[0].path)
         assertEquals("tok-1", transport.calls[0].body.getString("token"))
         assertEquals("user-2", transport.calls[0].body.getString("external_user_id"))
+    }
+
+    @Test
+    fun anEntryPointWithoutInitStartsFromTheSavedValuesAndSendsItsEvent() {
+        store.put(Engine.SDK_KEY to "pp_sdk_a", Engine.BASE_URL to "https://a.example")
+        dispatcher.startFromSaved(store, create)
+        dispatcher.submit { track("n1", "clicked", "later") }
+        // A second entry point in the same process does not start another engine.
+        dispatcher.startFromSaved(store, create)
+        scheduler.advance(60_000)
+        assertEquals(1, created)
+        val events = transport.calls.single { it.path == "events" }.body.getJSONArray("events")
+        assertEquals("n1", events.getJSONObject(0).getString("notification_id"))
+    }
+
+    @Test
+    fun withNothingSavedEntryPointsWaitForInit() {
+        dispatcher.startFromSaved(store, create)
+        dispatcher.submit { track("n1", "delivered") }
+        scheduler.advance(60_000)
+        assertEquals(0, created)
+        assertTrue(transport.calls.isEmpty())
+        dispatcher.init(store, "pp_sdk_a", "https://a.example", create)
+        scheduler.advance(60_000)
+        assertEquals(1, created)
+        assertTrue(transport.calls.any { it.path == "events" })
+    }
+
+    @Test
+    fun initAfterASelfStartUpdatesTheSavedValuesAndKeepsTheEngine() {
+        store.put(Engine.SDK_KEY to "pp_sdk_old", Engine.BASE_URL to "https://old.example")
+        dispatcher.startFromSaved(store, create)
+        scheduler.advance(0)
+        assertTrue(dispatcher.init(store, "pp_sdk_new", "https://new.example", create))
+        scheduler.advance(60_000)
+        assertEquals(1, created)
+        assertEquals("pp_sdk_new", store.values[Engine.SDK_KEY])
+        assertEquals("https://new.example", store.values[Engine.BASE_URL])
+    }
+
+    @Test
+    fun anEntryPointAfterInitDoesNothing() {
+        dispatcher.init(store, "pp_sdk_a", "https://a.example", create)
+        dispatcher.startFromSaved(store, create)
+        scheduler.advance(60_000)
+        assertEquals(1, created)
     }
 }
