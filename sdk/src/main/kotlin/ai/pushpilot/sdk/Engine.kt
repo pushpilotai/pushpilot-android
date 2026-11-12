@@ -2,6 +2,10 @@ package ai.pushpilot.sdk
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 import kotlin.random.Random
 
@@ -29,6 +33,7 @@ internal interface Scheduler {
  * The sync engine. Every method runs on the [Scheduler] thread, so state needs no locks.
  * The whole desired state lives in [Store]; a sync is pending whenever the payload built
  * from it differs from the last one the server accepted, which survives process death.
+ * Tracking events wait in [Store] too and go out in batches with the same backoff.
  */
 internal class Engine(
     private val store: Store,
@@ -95,6 +100,21 @@ internal class Engine(
         update(TOPICS to JSONArray(unique.take(MAX_TOPICS)).toString())
     }
 
+    /** Queues a tracking event (`delivered` or `clicked`) for this installation; the oldest are dropped past the cap. */
+    fun track(notificationId: String, type: String, buttonId: String? = null) {
+        val event = JSONObject()
+            .put("notification_id", notificationId)
+            .put("installation_id", store.get(ID))
+            .put("type", type)
+            .put("at", rfc3339(scheduler.now()))
+        if (buttonId != null) event.put("button_id", buttonId)
+        val queue = JSONArray(store.get(EVENTS) ?: "[]").put(event)
+        val keep = JSONArray()
+        for (i in maxOf(0, queue.length() - MAX_EVENTS) until queue.length()) keep.put(queue.get(i))
+        if (keep.length() < queue.length()) log("event queue full; dropped the oldest")
+        update(EVENTS to keep.toString())
+    }
+
     /** Clears the external user id; the installation stays registered. */
     fun logout() = setExternalUserId(null)
 
@@ -104,7 +124,7 @@ internal class Engine(
         val forgetId = if (store.get(SYNCED_AT) != null) store.get(ID) else store.get(FORGET)
         store.put(
             FORGET to forgetId, ID to newId(), TOKEN to null, EXTERNAL to null,
-            TOPICS to null, ATTRIBUTES to null, SYNCED_AT to null,
+            TOPICS to null, ATTRIBUTES to null, SYNCED_AT to null, EVENTS to null,
         )
         // Nothing is registered again until the app sets something or the next launch.
         store.put(SENT to payload())
@@ -134,21 +154,42 @@ internal class Engine(
         }
     }
 
-    /** Sends a pending forget first, then the sync if the payload differs from the last accepted one. */
+    /** Sends a pending forget first, then the sync if the payload changed, then queued events. */
     private fun flush() {
         store.get(FORGET)?.let { id ->
             post("forget", JSONObject().put("installation_id", id).toString()) ?: return
             store.put(FORGET to null)
         }
+        if (!sync()) return
+        sendEvents()
+    }
+
+    /** Syncs if the payload differs from the last accepted one; false when a retry was scheduled. */
+    private fun sync(): Boolean {
         val payload = payload()
-        if (payload == store.get(SENT)) return
-        val response = post(if (store.get(SYNCED_AT) == null) "register" else "sync", payload) ?: return
-        if (response.code !in 200..299) return
+        if (payload == store.get(SENT)) return true
+        val response = post(if (store.get(SYNCED_AT) == null) "register" else "sync", payload) ?: return false
+        if (response.code !in 200..299) return true
         val json = try { JSONObject(response.body) } catch (e: Exception) { null }
         json?.optJSONArray("warnings")?.takeIf { it.length() > 0 }?.let { log("server warnings: $it") }
         val id = json?.optString("installation_id").orEmpty()
         if (id.isNotEmpty() && id != store.get(ID) && isUuid(id)) store.put(ID to id)
         store.put(SENT to payload(), SYNCED_AT to scheduler.now().toString())
+        return true
+    }
+
+    /** Sends queued events oldest first, up to 100 per request; a rejected batch is dropped, a failed one retried. */
+    private fun sendEvents() {
+        while (true) {
+            val queue = JSONArray(store.get(EVENTS) ?: return)
+            if (queue.length() == 0) return store.put(EVENTS to null)
+            val batch = JSONArray()
+            for (i in 0 until minOf(EVENT_BATCH, queue.length())) batch.put(queue.get(i))
+            post("events", JSONObject().put("events", batch).toString()) ?: return
+            val rest = JSONArray()
+            for (i in batch.length() until queue.length()) rest.put(queue.get(i))
+            store.put(EVENTS to rest.takeIf { it.length() > 0 }?.toString())
+        }
     }
 
     /** POSTs and returns the response once settled (2xx, or a 4xx retrying cannot fix); null when a retry was scheduled. */
@@ -189,6 +230,8 @@ internal class Engine(
         const val DAY_MS = 24 * 60 * 60 * 1000L
         const val MAX_BACKOFF_MS = 5 * 60 * 1000L
         const val MAX_TOPICS = 100
+        const val MAX_EVENTS = 1000
+        const val EVENT_BATCH = 100
         const val ID = "installation_id"
         const val TOKEN = "token"
         const val EXTERNAL = "external_user_id"
@@ -197,9 +240,16 @@ internal class Engine(
         const val SENT = "last_sent_payload"
         const val SYNCED_AT = "last_synced_at"
         const val FORGET = "pending_forget_id"
+        const val EVENTS = "pending_events"
 
         /** The character set FCM accepts for topic names, matching the server's check. */
         private val TOPIC = Regex("[A-Za-z0-9._~%-]+")
+
+        /** UTC RFC 3339 timestamp with milliseconds; SimpleDateFormat because java.time needs API 26. */
+        private fun rfc3339(millis: Long): String =
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+                .apply { timeZone = TimeZone.getTimeZone("UTC") }
+                .format(Date(millis))
 
         /** A new random installation id. */
         private fun newId() = UUID.randomUUID().toString()

@@ -373,6 +373,131 @@ class EngineTest {
     }
 }
 
+class EventQueueTest {
+    private val store = FakeStore()
+    private val scheduler = FakeScheduler()
+    private val transport = FakeTransport(scheduler)
+
+    /** A registered engine with nothing left to sync. */
+    private fun registered(): Engine = Engine(store, transport, scheduler, Random(7)) { emptyMap() }.also {
+        it.start()
+        scheduler.advance(60_000)
+        transport.calls.clear()
+    }
+
+    private fun eventCalls() = transport.calls.filter { it.path == "events" }
+
+    private fun events(call: FakeTransport.Call) = call.body.getJSONArray("events")
+
+    @Test
+    fun eventsAreCoalescedIntoOneBatchWithTheContractFields() {
+        val engine = registered()
+        val at = scheduler.now()
+        engine.track("n1", "delivered")
+        engine.track("n1", "clicked", "later")
+        scheduler.advance(60_000)
+        assertEquals(1, transport.calls.size)
+        val sent = events(eventCalls().single())
+        assertEquals(2, sent.length())
+        val delivered = sent.getJSONObject(0)
+        assertEquals("n1", delivered.getString("notification_id"))
+        assertEquals(store.get(Engine.ID), delivered.getString("installation_id"))
+        assertEquals("delivered", delivered.getString("type"))
+        assertFalse(delivered.has("button_id"))
+        val expected = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date(at))
+        assertEquals(expected, delivered.getString("at"))
+        assertEquals("clicked", sent.getJSONObject(1).getString("type"))
+        assertEquals("later", sent.getJSONObject(1).getString("button_id"))
+        assertEquals(null, store.get(Engine.EVENTS))
+    }
+
+    @Test
+    fun eventsGoInBatchesOfOneHundred() {
+        val engine = registered()
+        repeat(150) { engine.track("n$it", "delivered") }
+        scheduler.advance(60_000)
+        assertEquals(listOf(100, 50), eventCalls().map { events(it).length() })
+        assertEquals("n100", events(eventCalls()[1]).getJSONObject(0).getString("notification_id"))
+    }
+
+    @Test
+    fun failedBatchIsKeptAndRetriedWithBackoff() {
+        val engine = registered()
+        transport.responses += Response(503)
+        transport.responses += Response(-1)
+        engine.track("n1", "delivered")
+        scheduler.advance(Engine.COALESCE_MS)
+        assertEquals(1, eventCalls().size)
+        assertTrue(store.get(Engine.EVENTS)!!.contains("n1"))
+        scheduler.advance(60_000)
+        assertEquals(3, eventCalls().size)
+        assertTrue(eventCalls().all { events(it).getJSONObject(0).getString("notification_id") == "n1" })
+        assertEquals(null, store.get(Engine.EVENTS))
+    }
+
+    @Test
+    fun rateLimitedBatchWaitsForRetryAfter() {
+        val engine = registered()
+        transport.responses += Response(429, "{}", retryAfterSeconds = 90)
+        engine.track("n1", "delivered")
+        scheduler.advance(Engine.COALESCE_MS)
+        val limitedAt = eventCalls().last().at
+        scheduler.advance(89_999)
+        assertEquals(1, eventCalls().size)
+        scheduler.advance(1)
+        assertEquals(limitedAt + 90_000, eventCalls().last().at)
+    }
+
+    @Test
+    fun rejectedBatchIsDroppedAndTheNextOneStillSent() {
+        val engine = registered()
+        transport.responses += Response(400)
+        repeat(150) { engine.track("n$it", "delivered") }
+        repeat(10) { scheduler.advance(Engine.MAX_BACKOFF_MS) }
+        assertEquals(listOf(100, 50), eventCalls().map { events(it).length() })
+        assertEquals(null, store.get(Engine.EVENTS))
+    }
+
+    @Test
+    fun queueIsCappedByDroppingTheOldest() {
+        val engine = registered()
+        repeat(Engine.MAX_EVENTS + 5) { engine.track("n$it", "delivered") }
+        val queue = org.json.JSONArray(store.get(Engine.EVENTS))
+        assertEquals(Engine.MAX_EVENTS, queue.length())
+        assertEquals("n5", queue.getJSONObject(0).getString("notification_id"))
+    }
+
+    @Test
+    fun queuedEventsSurviveProcessDeath() {
+        registered().track("n1", "delivered")
+        Engine(store, transport, scheduler, Random(7)) { emptyMap() }.start()
+        scheduler.advance(60_000)
+        assertEquals(1, eventCalls().size)
+    }
+
+    @Test
+    fun forgetDropsQueuedEvents() {
+        val engine = registered()
+        engine.track("n1", "delivered")
+        engine.forget()
+        scheduler.advance(60_000)
+        assertEquals(listOf("forget"), transport.calls.map { it.path })
+    }
+
+    @Test
+    fun eventsWaitBehindAFailingSync() {
+        val engine = registered()
+        transport.responses += Response(503)
+        engine.setPushToken("tok-1")
+        engine.track("n1", "delivered")
+        scheduler.advance(Engine.COALESCE_MS)
+        assertEquals(listOf("sync"), transport.calls.map { it.path })
+        scheduler.advance(60_000)
+        assertEquals(listOf("sync", "sync", "events"), transport.calls.map { it.path })
+    }
+}
+
 class DispatcherTest {
     @Test
     fun callsBeforeInitAreQueuedAndFlushedAfterStartInOrder() {
