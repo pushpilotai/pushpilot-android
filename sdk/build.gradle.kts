@@ -107,7 +107,7 @@ tasks.register<Zip>("centralBundle") {
             .filter { !File(it.path + ".asc").exists() }
         check(unsigned.isEmpty) { "Unsigned files (set signing.gnupg.keyName): ${unsigned.files.map { it.name }}" }
     }
-    from(stagingDir)
+    from(stagingDir) { exclude("**/maven-metadata.xml*") } // Central builds its own metadata
     archiveFileName.set("pushpilot-android-sdk-$version-central-bundle.zip")
     destinationDirectory.set(layout.buildDirectory.dir("central"))
 }
