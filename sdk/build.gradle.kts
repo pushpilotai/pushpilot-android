@@ -2,6 +2,7 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     `maven-publish`
+    signing
 }
 
 group = "ai.pushpilot"
@@ -27,7 +28,11 @@ android {
     testOptions { unitTests.isReturnDefaultValues = true }
 
     publishing {
-        singleVariant("release") { withSourcesJar() }
+        // Maven Central requires a sources jar and a javadoc jar next to the aar.
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
     }
 }
 
@@ -39,7 +44,9 @@ dependencies {
     testImplementation("org.json:json:20180813")
 }
 
-// No repository is configured: `./gradlew :sdk:publishToMavenLocal` is the only way to publish for now.
+val stagingDir = layout.buildDirectory.dir("staging-deploy")
+
+// `publishToMavenLocal` for local builds; `centralBundle` stages a signed release for Maven Central (see RELEASING.md).
 publishing {
     publications {
         register<MavenPublication>("release") {
@@ -48,9 +55,59 @@ publishing {
             afterEvaluate { from(components["release"]) }
             pom {
                 name.set("PushPilot Android SDK")
-                description.set("Registers an app installation with PushPilot and forwards its FCM push token.")
-                url.set("https://pushpilot.ai")
+                description.set("Registers an app installation with PushPilot and shows its pushes, with images, buttons, and delivery and tap tracking.")
+                url.set("https://github.com/pushpilotai/pushpilot-android")
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("pushpilotai")
+                        name.set("PushPilot")
+                        url.set("https://pushpilot.ai")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/pushpilotai/pushpilot-android")
+                    connection.set("scm:git:https://github.com/pushpilotai/pushpilot-android.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/pushpilotai/pushpilot-android.git")
+                }
             }
         }
     }
+    repositories {
+        maven {
+            name = "staging"
+            url = uri(stagingDir)
+        }
+    }
+}
+
+signing {
+    // Signs only when a GnuPG key is named in ~/.gradle/gradle.properties (signing.gnupg.keyName), so local builds need no key.
+    if (providers.gradleProperty("signing.gnupg.keyName").isPresent) {
+        useGpgCmd()
+        sign(publishing.publications["release"])
+    }
+}
+
+// Start each staging run empty so an older version's files never reach the bundle.
+tasks.matching { it.name == "publishReleasePublicationToStagingRepository" }.configureEach {
+    doFirst { delete(stagingDir) }
+}
+
+// The zip uploaded at central.sonatype.com → Publish Component. Refuses to build without signatures.
+tasks.register<Zip>("centralBundle") {
+    dependsOn("publishReleasePublicationToStagingRepository")
+    doFirst {
+        val unsigned = stagingDir.get().asFileTree.matching { include("**/*.aar", "**/*.jar", "**/*.pom") }
+            .filter { !File(it.path + ".asc").exists() }
+        check(unsigned.isEmpty) { "Unsigned files (set signing.gnupg.keyName): ${unsigned.files.map { it.name }}" }
+    }
+    from(stagingDir)
+    archiveFileName.set("pushpilot-android-sdk-$version-central-bundle.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("central"))
 }

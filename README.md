@@ -15,7 +15,7 @@ dependencies {
 }
 ```
 
-The artifact is not published to a public repository yet. To use it locally, run `./gradlew :sdk:publishToMavenLocal` and add `mavenLocal()` to your repositories.
+It is published on Maven Central, which Android projects include by default. To try a local build instead, run `./gradlew :sdk:publishToMavenLocal` here and add `mavenLocal()` to your app's repositories.
 
 ## Integrate
 
@@ -202,6 +202,10 @@ The **Show a test push** button feeds `handleMessage` a built-in payload with an
 
 This builds the library and the sample, runs the JVM unit tests and runs Android lint. It needs JDK 17 and the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`).
 
+## Releasing
+
+See [RELEASING.md](RELEASING.md) and [CHANGELOG.md](CHANGELOG.md).
+
 ## Licence
 
-No licence has been chosen yet.
+Apache License 2.0. See [LICENSE](LICENSE).
