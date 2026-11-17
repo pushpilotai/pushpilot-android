@@ -27,6 +27,7 @@ internal object LiveNotifier {
     private const val REQUEST_PROMOTED = "android.requestPromotedOngoing" // Notification.EXTRA_REQUEST_PROMOTED_ONGOING, public from 36.1
     private const val MAX_IMAGES = 4
     private const val IMAGE_SIDE = 256
+    private const val END_KEPT_SEC = 4 * 3600L
 
     private var memory: LiveMemory? = null
 
@@ -47,7 +48,8 @@ internal object LiveNotifier {
         if (Build.VERSION.SDK_INT < 26) memory.expired(now / 1000).forEach { manager.cancel(it, 0) }
         val verdict = memory.accept(update, now / 1000)
         if (verdict == LiveMemory.Verdict.DROP) return
-        val until = if (update.event == "end") update.dismissAtSec ?: (now / 1000) else update.endsAtSec
+        // An end keeps the final state until its removal time, 4 hours after the end when none is given (as iOS).
+        val until = if (update.event == "end") update.dismissAtSec ?: (now / 1000 + END_KEPT_SEC) else update.endsAtSec
         if (until * 1000 <= now) return manager.cancel(update.activityId, 0)
         val views = LiveViews(context, update, images(update), now)
         val builder = builder(context, manager)
@@ -85,11 +87,11 @@ internal object LiveNotifier {
         false // a 36.0 build without the 36.1 method
     }
 
-    /** The layout's lock block as the notification's custom view. */
+    /** The layout's lock block as the expanded custom view; collapsed, the compact line of [LiveViews.collapsed]. */
     private fun custom(builder: Notification.Builder, views: LiveViews) {
         val content = views.lock() ?: return
         if (Build.VERSION.SDK_INT >= 24) {
-            builder.setStyle(Notification.DecoratedCustomViewStyle()).setCustomContentView(content).setCustomBigContentView(content)
+            builder.setStyle(Notification.DecoratedCustomViewStyle()).setCustomContentView(views.collapsed() ?: content).setCustomBigContentView(content)
         } else {
             @Suppress("DEPRECATION")
             builder.setContent(content)

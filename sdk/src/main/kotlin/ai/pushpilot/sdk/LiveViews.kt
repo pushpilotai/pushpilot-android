@@ -43,9 +43,27 @@ internal class LiveViews(
         return root
     }
 
-    /** One block, or null for an unknown type or an empty one. */
-    private fun draw(block: JSONObject): RemoteViews? = when (block.optString("type")) {
-        "row", "column" -> box(block)
+    /**
+     * The collapsed look, one line like iOS's compact Dynamic Island: `compact_leading`, the
+     * island's `center`, then `compact_trailing` at the end. Null when the layout has none of
+     * them; the lock layout is then used, cut to the collapsed height.
+     */
+    fun collapsed(): RemoteViews? {
+        val island = live.layout.optJSONObject("island") ?: return null
+        val parts = listOf("compact_leading", "center", "compact_trailing").map { island.optJSONObject(it)?.let { b -> draw(b, true) } }
+        if (parts.all { it == null }) return null
+        val row = RemoteViews(pkg, R.layout.pushpilot_live_row)
+        row.setInt(R.id.pushpilot_live_box, "setGravity", Gravity.CENTER_VERTICAL)
+        parts[0]?.let { row.addView(R.id.pushpilot_live_box, it); row.addView(R.id.pushpilot_live_box, RemoteViews(pkg, R.layout.pushpilot_live_gap_8)) }
+        parts[1]?.let { row.addView(R.id.pushpilot_live_box, it) }
+        row.addView(R.id.pushpilot_live_box, RemoteViews(pkg, R.layout.pushpilot_live_spacer))
+        parts[2]?.let { row.addView(R.id.pushpilot_live_box, RemoteViews(pkg, R.layout.pushpilot_live_gap_8)); row.addView(R.id.pushpilot_live_box, it) }
+        return row
+    }
+
+    /** One block, or null for an unknown type or an empty one; [narrow] when it must be only as wide as its content. */
+    private fun draw(block: JSONObject, narrow: Boolean = false): RemoteViews? = when (block.optString("type")) {
+        "row", "column" -> box(block, narrow)
         "spacer" -> RemoteViews(pkg, R.layout.pushpilot_live_spacer)
         "text" -> text(live.fill(block.optString("text")), block, R.layout.pushpilot_live_text)
         "badge" -> badge(block)
@@ -53,14 +71,19 @@ internal class LiveViews(
         "image" -> image(block)
         "progress" -> progress(block)
         "timer" -> timer(block)
-        "pairs" -> pairs(block)
+        "pairs" -> pairs(block, narrow)
         else -> null
     }
 
-    /** A row or column with its items, spacing and alignment. */
-    private fun box(block: JSONObject): RemoteViews {
+    /**
+     * A row or column with its items, spacing and alignment. Inside a row it is only as wide as
+     * its blocks: a full-width one would leave its siblings no room (the cut-off score layout).
+     * So is every box inside such a narrow one, as a narrow column ignores full-width children
+     * when it sizes itself and would cut them off.
+     */
+    private fun box(block: JSONObject, narrow: Boolean): RemoteViews {
         val row = block.optString("type") == "row"
-        val views = RemoteViews(pkg, if (row) R.layout.pushpilot_live_row else R.layout.pushpilot_live_column)
+        val views = RemoteViews(pkg, layout(row, narrow))
         val gravity = when (block.optString("align")) {
             "top" -> Gravity.TOP
             "bottom" -> Gravity.BOTTOM
@@ -74,12 +97,20 @@ internal class LiveViews(
         val items = block.optJSONArray("items")
         var first = true
         for (i in 0 until (items?.length() ?: 0)) {
-            val child = items!!.optJSONObject(i)?.let(::draw) ?: continue
+            val child = items!!.optJSONObject(i)?.let { draw(it, row || narrow) } ?: continue
             if (!first && gap != 0) views.addView(R.id.pushpilot_live_box, RemoteViews(pkg, gap))
             views.addView(R.id.pushpilot_live_box, child)
             first = false
         }
         return views
+    }
+
+    /** The row or column layout: full width, or only as wide as its blocks when [narrow]. */
+    private fun layout(row: Boolean, narrow: Boolean): Int = when {
+        row && narrow -> R.layout.pushpilot_live_row_wrap
+        row -> R.layout.pushpilot_live_row
+        narrow -> R.layout.pushpilot_live_column_wrap
+        else -> R.layout.pushpilot_live_column
     }
 
     /** The gap layout nearest [spacing] dp, or 0 for none. */
@@ -169,13 +200,15 @@ internal class LiveViews(
     }
 
     /** Label and value rows: the label quiet on the left, the value bold on the right. */
-    private fun pairs(block: JSONObject): RemoteViews {
-        val column = RemoteViews(pkg, R.layout.pushpilot_live_column)
+    private fun pairs(block: JSONObject, narrow: Boolean): RemoteViews {
+        val column = RemoteViews(pkg, layout(false, narrow))
         val items = block.optJSONArray("items")
         for (i in 0 until (items?.length() ?: 0)) {
             val item = items!!.optJSONObject(i) ?: continue
             val row = RemoteViews(pkg, R.layout.pushpilot_live_row)
             row.addView(R.id.pushpilot_live_box, text(live.fill(item.optString("label")), JSONObject().put("color", "secondary"), R.layout.pushpilot_live_text))
+            // The gap keeps label and value apart when the pairs are only as wide as their widest line.
+            row.addView(R.id.pushpilot_live_box, RemoteViews(pkg, R.layout.pushpilot_live_gap_8))
             row.addView(R.id.pushpilot_live_box, RemoteViews(pkg, R.layout.pushpilot_live_spacer))
             row.addView(R.id.pushpilot_live_box, text(live.fill(item.optString("value")), JSONObject().put("weight", "semibold"), R.layout.pushpilot_live_text))
             column.addView(R.id.pushpilot_live_box, row)

@@ -117,7 +117,8 @@ From 2.1.0, `handleMessage` also draws live activities (PushPilot's Live Updates
 - **How it looks.** The activity's layout is drawn as a custom view on the "Live updates" channel (`pushpilot_live`, default importance: it sounds when it starts and when an update carries an alert, and updates quietly otherwise). On Android 16 with the user's permission for promoted notifications, an activity sent as promoted shows as a Live Update instead: the layout's title, text, status chip, segmented progress with a tracker icon, picture and timer, in the status bar and on the lock screen.
 - **Icons.** The SDK ships the PushPilot icon list as Material Symbols vector drawables named `pushpilot_live_<name>`. A layout can also name one of your own drawables.
 - **Images.** https images in the layout are downloaded before the notification is posted (at most four, 5-second timeout); until one loads, its fallback icon is shown.
-- **Ending.** The notification is ongoing until the end step, then stays until its dismissal time. On Android 8 and later it also times out by itself at the activity's end; on Android 6 and 7 it is removed at the next live push after that.
+- **Collapsed and expanded.** Expanded, the notification draws the layout's lock block. Collapsed, it draws one line from the layout's compact island blocks (`compact_leading`, the island's `center`, `compact_trailing`), much like the compact Dynamic Island on iOS; a layout without them is cut to the collapsed height.
+- **Ending.** The notification is ongoing until the end step. The end replaces it with the final state, no longer ongoing, removed at the end's "remove from screen" time, or 4 hours after the end when none is given, as iOS does. On Android 8 and later it also times out by itself at the activity's end if no end step arrives; on Android 6 and 7 it is removed at the next live push after that.
 - **Never back.** If the user swipes an activity away, later updates of it are not shown. Steps arriving late or twice are ignored.
 - **Taps** open the activity's link like a push's link, through `setLinkHandler` when one is set, and count as `clicked`.
 - **What it reports.** `live_started` once per activity when it is first shown, `live_dismissed` when the user swipes it away, and `clicked`. Never `delivered`. Each sync carries a `live` object (see below), so PushPilot only sends live activities to devices that can show them.
@@ -211,7 +212,7 @@ The **Show a test push** button feeds `handleMessage` a built-in payload with an
 
 ### Test against a local server
 
-The sample's screen shows the server, the installation id, whether live activities are supported and on, whether the promoted look is allowed, and the last sync. Debug builds allow plain http (`sample/src/debug/AndroidManifest.xml`); release builds keep Android's https-only default.
+The sample's screen shows the server, the installation id, whether live activities are supported and on, whether the promoted look is allowed, and the last sync. Debug builds allow plain http (`sample/src/debug/AndroidManifest.xml`); release builds keep Android's https-only default. Debug builds also draw a live activity step from adb, without a server: `adb shell am broadcast -n ai.pushpilot.sample/.DebugLiveReceiver --es live <base64 of the pushpilot_live JSON>`. The sample has no icon of its own, so its notifications show the SDK's last-resort icon; an app's own icon is used in this order: `ai.pushpilot.sdk.notification_icon`, Firebase's default notification icon, the app icon.
 
 On the emulator, `10.0.2.2` is the Mac's `localhost`. With several devices connected, pick one with `ANDROID_SERIAL`:
 

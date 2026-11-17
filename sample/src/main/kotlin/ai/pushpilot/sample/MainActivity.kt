@@ -38,7 +38,7 @@ class MainActivity : Activity() {
         }
         statusView = TextView(this).apply { setTextIsSelectable(true) }
         layout.addView(statusView)
-        layout.addView(button("Refresh status") { refreshStatus() })
+        layout.addView(button("Refresh status") { refreshStatus(0) })
         layout.addView(userId)
         layout.addView(button("Set user id") { PushPilot.setExternalUserId(userId.text.toString()) })
         layout.addView(topics)
@@ -74,9 +74,10 @@ class MainActivity : Activity() {
         refreshStatus()
     }
 
-    /** Shows the server, installation id, live activity flags and the last sync. */
-    private fun refreshStatus() {
+    /** Shows the server, installation id, live activity flags and the last sync; until a sync was accepted, checks again every 2 s. */
+    private fun refreshStatus(retries: Int = 15) {
         PushPilot.status { s ->
+            if (s.lastSyncAtMs == null && retries > 0 && !isFinishing) statusView.postDelayed({ refreshStatus(retries - 1) }, 2_000)
             /** "yes", "no", or "not reported" before the server accepted a sync. */
             fun yesNo(value: Boolean?) = value?.let { if (it) "yes" else "no" } ?: "not reported"
             statusView.text = listOf(
