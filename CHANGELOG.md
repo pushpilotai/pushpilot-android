@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-11-17)
 
 First public release, on Maven Central as `ai.pushpilot:sdk:2.0.0`.
 
