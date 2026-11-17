@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "ai.pushpilot"
-version = "2.0.0"
+version = "2.1.0"
 
 android {
     namespace = "ai.pushpilot.sdk"

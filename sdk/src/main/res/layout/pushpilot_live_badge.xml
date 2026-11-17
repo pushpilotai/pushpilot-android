@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A short label in a filled capsule. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pushpilot_live_text"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/pushpilot_live_badge"
+    android:maxLines="1"
+    android:paddingStart="8dp"
+    android:paddingTop="2dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="2dp"
+    android:textColor="#FFFFFFFF"
+    android:textSize="12sp" />

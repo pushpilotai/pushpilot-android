@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0 (unreleased)
+
+- Live activities: `handleMessage` draws, updates and ends PushPilot live activities as one ongoing notification per activity on a new "Live updates" channel, from the activity's layout. On Android 16 they are promoted Live Updates when the push asks and the user allows it (status chip, segmented progress, tracker icon, timer).
+- Reports `live_started`, `live_dismissed` and taps on live activities; never shows an activity again after the user swipes it away.
+- Sync sends a `live` object (supported, enabled, promoted).
+- Ships the PushPilot icon list as Material Symbols vector drawables (Apache-2.0).
+- Adds the `POST_PROMOTED_NOTIFICATIONS` permission and a receiver to the manifest.
+
 ## 2.0.0 (2026-11-17)
 
 First public release, on Maven Central as `ai.pushpilot:sdk:2.0.0`.

@@ -40,7 +40,7 @@ internal class Engine(
     private val transport: Transport,
     private val scheduler: Scheduler,
     private val random: Random = Random.Default,
-    private val device: () -> Map<String, String>,
+    private val device: () -> Map<String, Any>,
 ) {
     private var scheduled = false
     private var blockedUntil = 0L
@@ -100,7 +100,7 @@ internal class Engine(
         update(TOPICS to JSONArray(unique.take(MAX_TOPICS)).toString())
     }
 
-    /** Queues a tracking event (`delivered` or `clicked`) for this installation; the oldest are dropped past the cap. */
+    /** Queues a tracking event (`delivered`, `clicked`, `live_started` or `live_dismissed`) for this installation; the oldest are dropped past the cap. */
     fun track(notificationId: String, type: String, buttonId: String? = null) {
         val event = JSONObject()
             .put("notification_id", notificationId)

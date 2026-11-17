@@ -110,6 +110,19 @@ Backups need no setup. The SDK keeps its state, including the saved SDK key and 
 
 The `sample/` app shows all of the above.
 
+## Live activities
+
+From 2.1.0, `handleMessage` also draws live activities (PushPilot's Live Updates): one notification per activity that stays while something happens, such as a score, a delivery or an upload, and changes with each update. You send them from the dashboard, a campaign or the server API; the app needs no code beyond `handleMessage`.
+
+- **How it looks.** The activity's layout is drawn as a custom view on the "Live updates" channel (`pushpilot_live`, default importance: it sounds when it starts and when an update carries an alert, and updates quietly otherwise). On Android 16 with the user's permission for promoted notifications, an activity sent as promoted shows as a Live Update instead: the layout's title, text, status chip, segmented progress with a tracker icon, picture and timer, in the status bar and on the lock screen.
+- **Icons.** The SDK ships the PushPilot icon list as Material Symbols vector drawables named `pushpilot_live_<name>`. A layout can also name one of your own drawables.
+- **Images.** https images in the layout are downloaded before the notification is posted (at most four, 5-second timeout); until one loads, its fallback icon is shown.
+- **Ending.** The notification is ongoing until the end step, then stays until its dismissal time. On Android 8 and later it also times out by itself at the activity's end; on Android 6 and 7 it is removed at the next live push after that.
+- **Never back.** If the user swipes an activity away, later updates of it are not shown. Steps arriving late or twice are ignored.
+- **Taps** open the activity's link like a push's link, through `setLinkHandler` when one is set, and count as `clicked`.
+- **What it reports.** `live_started` once per activity when it is first shown, `live_dismissed` when the user swipes it away, and `clicked`. Never `delivered`. Each sync carries a `live` object (see below), so PushPilot only sends live activities to devices that can show them.
+- The SDK's manifest adds `POST_PROMOTED_NOTIFICATIONS` (a normal permission, granted at install; the user can turn promotion off in settings) and a receiver for swiped-away activities. It remembers live activities in `ai.pushpilot.sdk.live.json` in the no-backup directory until each one is over.
+
 ## Public methods
 
 All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPilot.init(...)` too).
@@ -123,7 +136,7 @@ All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPi
 | `setTopics(topics: List<String>)` | Replaces the topic list (at most 100; letters, digits and `-_.~%`). Invalid names are dropped. |
 | `logout()` | Clears the external user id. The device stays registered and keeps receiving pushes. |
 | `forget()` | Deletes this installation from PushPilot and clears all local SDK state except the saved SDK key and base URL, which are your app's configuration. Nothing is sent again until your app next calls a setter or the app next launches, which registers a new installation. To keep a user forgotten, stop calling the SDK for them. |
-| `handleMessage(context, data: Map<String, String>): Boolean` | For a PushPilot push (its data has `source` = `pushpilot`), reports delivery, shows the notification and returns `true`. For any other push it does nothing and returns `false`. Off the main thread, as in `onMessageReceived`, it waits for the image; on the main thread it shows the notification in the background. |
+| `handleMessage(context, data: Map<String, String>): Boolean` | For a PushPilot push (its data has `source` = `pushpilot`), reports delivery, shows the notification and returns `true`; a live activity step draws or updates its activity instead (see "Live activities"). For any other push it does nothing and returns `false`. Off the main thread, as in `onMessageReceived`, it waits for the image; on the main thread it shows the notification in the background. |
 | `setLinkHandler(handler: LinkHandler?)` | Hands the links of tapped notifications to `handler.onLink(link: Uri)` instead of the SDK opening them; `null` restores the default. See "Routing links yourself". |
 | `tappedNotification(intent: Intent?): TappedNotification?` | The notification whose tap started `intent`: `notificationId` and `data`; `null` for any other intent. |
 
@@ -145,6 +158,7 @@ Every request goes over HTTPS to `{baseUrl}/api/sdk/v1/register/`, `/sync/` or `
 | `external_user_id` | Your user id, or `null` | Your app, via `setExternalUserId` |
 | `topics` | Topic list; sent only after `setTopics` is called | Your app |
 | `attributes` | Custom attributes; sent only after `setAttributes` is called | Your app |
+| `live` | `{"supported": true, "enabled": …, "promoted": …}`: whether live activities can be shown (notifications and the "Live updates" channel on) and promoted (Android 16 permission) | SDK |
 
 `forget` sends only the `installation_id`. `forget` also drops events not yet sent.
 
@@ -154,11 +168,11 @@ Tracking events go to `{baseUrl}/api/sdk/v1/events/` as `{"events": [...]}`, at 
 |---|---|
 | `notification_id` | The PushPilot notification it is about |
 | `installation_id` | PushPilot's installation id |
-| `type` | `delivered` or `clicked` |
+| `type` | `delivered`, `clicked`, `live_started` or `live_dismissed` |
 | `button_id` | The tapped button's id; only on `clicked` from a button |
 | `at` | When it happened, RFC 3339 in UTC |
 
-Nothing else is collected: no advertising id, no location, no email or phone, and no events other than those two. Like any HTTP request, the server sees the device's IP address; PushPilot uses it in memory for rate limiting.
+Nothing else is collected: no advertising id, no location, no email or phone, and no events other than those. Like any HTTP request, the server sees the device's IP address; PushPilot uses it in memory for rate limiting.
 
 When requests are made:
 
@@ -175,7 +189,7 @@ What to declare depends on what you pass to the SDK. For the SDK's own data:
 
 - **Device or other IDs: collected.** PushPilot's installation id and the FCM push address (Firebase Installation ID or registration token). Purpose: app functionality (delivering notifications). Not optional for users of push.
 - **User IDs: collected**, only if you call `setExternalUserId`. Purpose: app functionality (sending to a signed-in user's devices).
-- **App interactions (App activity): collected.** Whether each notification was delivered and whether it or one of its buttons was tapped. Purpose: analytics (delivery and click reports).
+- **App interactions (App activity): collected.** Whether each notification was delivered and whether it or one of its buttons was tapped; for live activities, whether each was shown, swiped away or tapped. Purpose: analytics (delivery and click reports).
 - **Custom attributes:** declare whatever category matches the values you send with `setAttributes` (for example, purchase history or app interactions).
 - Data is **encrypted in transit** (HTTPS) when you use the default base URL.
 - Users can **request deletion**: call `PushPilot.forget()` from your account-deletion or privacy flow.
@@ -208,4 +222,4 @@ See [RELEASING.md](RELEASING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Licence
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE). The `pushpilot_live_*` icons in `sdk/src/main/res/drawable` are Google's [Material Symbols](https://github.com/google/material-design-icons), also under the Apache License 2.0.

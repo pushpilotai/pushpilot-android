@@ -121,7 +121,8 @@ object PushPilot {
 
     /**
      * Call from `onMessageReceived` with `RemoteMessage.data`. For a PushPilot push it reports
-     * delivery, shows the notification (with image and buttons) and returns true; for any
+     * delivery, shows the notification (with image and buttons) and returns true; a live activity
+     * step draws, updates or ends that activity's notification instead; for any
      * other push it does nothing and returns false. Off the main thread it waits for the image
      * download, as FCM expects; on the main thread it shows the notification in the background.
      */
@@ -130,6 +131,7 @@ object PushPilot {
         if (!Push.isOurs(data)) return false
         try {
             startFromSaved(context)
+            if (LiveUpdate.isLive(data)) return true.also { showLive(context, data) }
             // Ours but unreadable: swallowed, so the app never shows it as its own push. parse logs why.
             val push = Push.parse(data) ?: return true
             val app = context.applicationContext ?: context
@@ -146,6 +148,20 @@ object PushPilot {
             log("handleMessage failed: ${e.javaClass.simpleName}")
         }
         return true
+    }
+
+    /** Draws a live activity step like [handleMessage] draws a push: in the background on the main thread. */
+    private fun showLive(context: Context, data: Map<String, String>) {
+        val update = LiveUpdate.parse(data) ?: return
+        val app = context.applicationContext ?: context
+        val show = {
+            try {
+                LiveNotifier.show(app, update)
+            } catch (e: Exception) {
+                log("live activity not shown: ${e.javaClass.simpleName}")
+            }
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) Thread { show() }.start() else show()
     }
 
     /**

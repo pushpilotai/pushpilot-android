@@ -97,7 +97,7 @@ internal object Notifier {
     }
 
     /** The app's manifest meta-data, or null. */
-    private fun metaData(context: Context): Bundle? = try {
+    fun metaData(context: Context): Bundle? = try {
         val pm = context.packageManager
         val info = if (Build.VERSION.SDK_INT >= 33) {
             pm.getApplicationInfo(context.packageName, PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
@@ -111,14 +111,14 @@ internal object Notifier {
     }
 
     /** Our meta-data icon, else Firebase's default notification icon, else the app's own icon. */
-    private fun smallIcon(context: Context, meta: Bundle?): Int =
+    fun smallIcon(context: Context, meta: Bundle?): Int =
         meta?.getInt(META_ICON)?.takeIf { it != 0 }
             ?: meta?.getInt(FIREBASE_ICON)?.takeIf { it != 0 }
             ?: context.applicationInfo.icon.takeIf { it != 0 }
             ?: android.R.drawable.ic_dialog_info
 
-    /** Downloads an https image within the size cap and deadline; null on any failure. */
-    private fun download(url: String): Bitmap? = try {
+    /** Downloads an https image within the size cap and deadline, its longer side at most [maxSide]; null on any failure. */
+    fun download(url: String, maxSide: Int = MAX_IMAGE_SIDE): Bitmap? = try {
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = IMAGE_TIMEOUT_MS
@@ -126,7 +126,7 @@ internal object Notifier {
             if (connection.responseCode != 200 || connection.contentLength > MAX_IMAGE_BYTES) {
                 null
             } else {
-                connection.inputStream.use { readCapped(it) }?.let { decode(it) }
+                connection.inputStream.use { readCapped(it) }?.let { decode(it, maxSide) }
             }
         } finally {
             connection.disconnect()
@@ -149,12 +149,12 @@ internal object Notifier {
         }
     }
 
-    /** Decodes, downsampled so the longer side is at most [MAX_IMAGE_SIDE] pixels. */
-    private fun decode(bytes: ByteArray): Bitmap? {
+    /** Decodes, downsampled so the longer side is at most [maxSide] pixels. */
+    private fun decode(bytes: ByteArray, maxSide: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > MAX_IMAGE_SIDE) sample *= 2
+        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > maxSide) sample *= 2
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 }

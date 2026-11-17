@@ -28,9 +28,9 @@ internal fun log(message: String) {
  * JSON file in the no-backup directory, which Android leaves out of Auto Backup and
  * device-to-device transfer, so a restored or cloned phone never reuses this installation id.
  */
-internal class FileStore(dir: () -> File) : Store {
+internal class FileStore(name: String = "ai.pushpilot.sdk.json", dir: () -> File) : Store {
     // Resolved lazily so the first disk access happens on the SDK thread, not in init().
-    private val file by lazy { File(dir(), "ai.pushpilot.sdk.json") }
+    private val file by lazy { File(dir(), name) }
     private val values by lazy { load() }
 
     /** Reads one value. */
@@ -110,7 +110,8 @@ internal class ExecutorScheduler(private val executor: ScheduledExecutorService)
 }
 
 /** Fields the SDK reads itself on every sync; none prompts the user or identifies the hardware. */
-internal fun deviceFields(context: Context): Map<String, String> = mapOf(
+internal fun deviceFields(context: Context): Map<String, Any> = mapOf(
+    "live" to LiveNotifier.capability(context),
     "notification_permission" to notificationPermission(context),
     "os_version" to Build.VERSION.RELEASE.orEmpty().take(50),
     "app_version" to appVersion(context).take(50),
