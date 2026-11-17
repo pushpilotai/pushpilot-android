@@ -62,7 +62,7 @@ object PushPilot {
             val app = context.applicationContext ?: context
             val store = store(app)
             dispatcher.init(store, sdkKey.trim(), baseUrl ?: DEFAULT_BASE_URL) { engine(app, store) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             log("init failed: ${e.javaClass.simpleName}")
         }
     }
@@ -161,12 +161,13 @@ object PushPilot {
             val show = {
                 try {
                     Notifier.show(app, push)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     log("push not shown: ${e.javaClass.simpleName}")
                 }
             }
             if (Looper.myLooper() == Looper.getMainLooper()) Thread { show() }.start() else show()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // Throwable, not Exception: a failed class init is an Error, and a push must never crash the app.
             log("handleMessage failed: ${e.javaClass.simpleName}")
         }
         return true
@@ -179,7 +180,7 @@ object PushPilot {
         val show = {
             try {
                 LiveNotifier.show(app, update)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 log("live activity not shown: ${e.javaClass.simpleName}")
             }
         }
@@ -216,7 +217,7 @@ object PushPilot {
     @JvmStatic
     fun tappedNotification(intent: Intent?): TappedNotification? = try {
         intent?.let { TappedNotification.from(it.getStringExtra(Notifier.EXTRA_NOTIFICATION_ID), it.getStringExtra(Notifier.EXTRA_DATA)) }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         // A malformed extras bundle from another app must not crash the caller.
         null
     }

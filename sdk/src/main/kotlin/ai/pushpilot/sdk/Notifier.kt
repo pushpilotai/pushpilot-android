@@ -131,7 +131,7 @@ internal object Notifier {
         } finally {
             connection.disconnect()
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         log("push image not loaded: ${e.javaClass.simpleName}")
         null
     }
@@ -185,7 +185,7 @@ internal class TapActivity : Activity() {
             try {
                 Notifier.recordTap(this, intent)
                 open(intent.getStringExtra(Notifier.EXTRA_URL), tapExtras(intent))
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 log("tap failed: ${e.javaClass.simpleName}")
             }
         }
@@ -230,7 +230,7 @@ internal class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         try {
             Notifier.recordTap(context, intent)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             log("button tap failed: ${e.javaClass.simpleName}")
         }
     }

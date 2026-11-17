@@ -45,11 +45,8 @@ internal object LiveNotifier {
         val memory = memory(context)
         // shortcut: Android 7 and older have no timeout; their finished activities go at the next live push, not on time.
         if (Build.VERSION.SDK_INT < 26) memory.expired(now / 1000).forEach { manager.cancel(it, 0) }
-        when (memory.accept(update, now / 1000)) {
-            LiveMemory.Verdict.DROP -> return
-            LiveMemory.Verdict.SHOW_FIRST -> PushPilot.track(update.notificationId, "live_started", null)
-            LiveMemory.Verdict.SHOW -> Unit
-        }
+        val verdict = memory.accept(update, now / 1000)
+        if (verdict == LiveMemory.Verdict.DROP) return
         val until = if (update.event == "end") update.dismissAtSec ?: (now / 1000) else update.endsAtSec
         if (until * 1000 <= now) return manager.cancel(update.activityId, 0)
         val views = LiveViews(context, update, images(update), now)
@@ -67,6 +64,8 @@ internal object LiveNotifier {
         if (Build.VERSION.SDK_INT >= 26) builder.setTimeoutAfter(until * 1000 - now)
         if (update.promoted && canPromote(manager)) promoted(context, builder, update, views) else custom(builder, views)
         manager.notify(update.activityId, 0, builder.build())
+        // Only once it is posted: a step that fails to draw is never counted as started.
+        if (verdict == LiveMemory.Verdict.SHOW_FIRST) PushPilot.track(update.notificationId, "live_started", null)
     }
 
     /** A builder on the "Live updates" channel (default importance: it sounds once, then updates quietly). */
@@ -211,7 +210,7 @@ internal class LiveReceiver : BroadcastReceiver() {
         Thread {
             try {
                 LiveNotifier.onRemoved(context, intent)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 log("live dismissal not recorded: ${e.javaClass.simpleName}")
             } finally {
                 pending.finish()

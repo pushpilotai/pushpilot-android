@@ -70,8 +70,8 @@ internal class LiveUpdate(
     }
 
     companion object {
-        /** `{{name}}` or `{{name|fallback}}`. */
-        private val TOKEN = Regex("""\{\{\s*([a-z][a-z0-9_]*)\s*(\|[^}]*)?}}""")
+        /** `{{name}}` or `{{name|fallback}}`. Every brace escaped: Android's ICU engine rejects a bare `}` (IcuRegexTest). */
+        private val TOKEN = Regex("""\{\{\s*([a-z][a-z0-9_]*)\s*(\|[^\}]*)?\}\}""")
 
         /** True when the data map is a live step; checked before [Push.parse], which would log it as unreadable. */
         fun isLive(data: Map<String, String>) = Push.isOurs(data) && data.containsKey("pushpilot_live")

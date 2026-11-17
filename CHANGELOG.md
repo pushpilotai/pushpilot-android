@@ -7,6 +7,9 @@
 - Sync sends a `live` object (supported, enabled, promoted).
 - Ships the PushPilot icon list as Material Symbols vector drawables (Apache-2.0).
 - Adds the `POST_PROMOTED_NOTIFICATIONS` permission and a receiver to the manifest.
+- Fixed: every live push crashed the app on Android (the `{{token}}` pattern had a bare `}`, which Android's ICU regex engine rejects). A unit test now holds every SDK regex to ICU's rules.
+- `handleMessage`, the tap activity, the receivers and the SDK thread now contain any `Throwable` from PushPilot's own code: logged without the push's contents, never thrown into the app.
+- `live_started` is reported only after the notification is posted.
 - `PushPilot.status(callback)` gives a status screen the installation id, the live flags of the last accepted sync and the last sync result; it holds no token.
 
 ## 2.0.0 (2026-11-17)

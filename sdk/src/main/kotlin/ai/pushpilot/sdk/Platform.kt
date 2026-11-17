@@ -102,7 +102,7 @@ internal class ExecutorScheduler(private val executor: ScheduledExecutorService)
         executor.schedule({
             try {
                 task()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 log("internal error: ${e.javaClass.simpleName}")
             }
         }, delayMs, TimeUnit.MILLISECONDS)
