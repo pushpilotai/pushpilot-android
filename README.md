@@ -139,6 +139,7 @@ All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPi
 | `handleMessage(context, data: Map<String, String>): Boolean` | For a PushPilot push (its data has `source` = `pushpilot`), reports delivery, shows the notification and returns `true`; a live activity step draws or updates its activity instead (see "Live activities"). For any other push it does nothing and returns `false`. Off the main thread, as in `onMessageReceived`, it waits for the image; on the main thread it shows the notification in the background. |
 | `setLinkHandler(handler: LinkHandler?)` | Hands the links of tapped notifications to `handler.onLink(link: Uri)` instead of the SDK opening them; `null` restores the default. See "Routing links yourself". |
 | `tappedNotification(intent: Intent?): TappedNotification?` | The notification whose tap started `intent`: `notificationId` and `data`; `null` for any other intent. |
+| `status(callback: (Status) -> Unit)` | Calls back on the main thread with a `Status` for a status or debug screen: the installation id, the live flags of the last sync the server accepted (supported, on, promoted look allowed) and the last sync. It holds no token or key. |
 
 ## What the SDK sends, and when
 
@@ -207,6 +208,19 @@ The sample builds without Firebase. To receive pushes, put your own `google-serv
 Add `-PpushpilotBaseUrl=https://your-server` to point it at another server. Without a `google-services.json` the app runs and syncs, but has no push address.
 
 The **Show a test push** button feeds `handleMessage` a built-in payload with an image, two buttons and Hindi, Arabic and Tamil text, so display and taps can be checked without a server. The screen shows the notification id and `order_id` that `tappedNotification` returns when opened from a notification. The **Links** button switches between the SDK opening links and a link handler that shows them in a toast. Its events carry a random notification id that the server does not know.
+
+### Test against a local server
+
+The sample's screen shows the server, the installation id, whether live activities are supported and on, whether the promoted look is allowed, and the last sync. Debug builds allow plain http (`sample/src/debug/AndroidManifest.xml`); release builds keep Android's https-only default.
+
+On the emulator, `10.0.2.2` is the Mac's `localhost`. With several devices connected, pick one with `ANDROID_SERIAL`:
+
+```bash
+ANDROID_SERIAL=emulator-5554 ./gradlew :sample:installDebug -PpushpilotSdkKey=pp_sdk_... -PpushpilotBaseUrl=http://10.0.2.2:8019
+adb -s emulator-5554 shell am start -n ai.pushpilot.sample/.MainActivity
+```
+
+A real phone uses the Mac's address on the network (for example `http://192.168.1.20:8019`), and the server must listen on it. Pushes also need your `google-services.json` in `sample/`, and an Android app in the dashboard with the package `ai.pushpilot.sample`.
 
 ## Build
 

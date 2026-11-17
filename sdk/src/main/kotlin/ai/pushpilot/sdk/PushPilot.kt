@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import org.json.JSONException
 import org.json.JSONObject
@@ -92,6 +93,27 @@ object PushPilot {
      */
     @JvmStatic
     fun setPushToken(token: String?) = dispatcher.submit { setPushToken(token) }
+
+    /**
+     * What the SDK has reported for this installation, for a status or debug screen. The live flags
+     * are those of the last sync the server accepted (null before one). It holds no token or key.
+     */
+    data class Status(
+        val installationId: String?,
+        val liveSupported: Boolean?,
+        val liveEnabled: Boolean?,
+        /** The user lets the app post promoted notifications (Android 16 and later). */
+        val livePromoted: Boolean?,
+        val lastSyncAtMs: Long?,
+        val lastSyncResult: String?,
+    )
+
+    /** Calls [callback] on the main thread with the SDK's [Status]; before init it waits for the SDK to start. */
+    @JvmStatic
+    fun status(callback: (Status) -> Unit) = dispatcher.submit {
+        val status = status()
+        Handler(Looper.getMainLooper()).post { callback(status) }
+    }
 
     /** Links this installation to the app's own user id after login; null clears it. */
     @JvmStatic

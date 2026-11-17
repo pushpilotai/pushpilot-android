@@ -7,6 +7,7 @@
 - Sync sends a `live` object (supported, enabled, promoted).
 - Ships the PushPilot icon list as Material Symbols vector drawables (Apache-2.0).
 - Adds the `POST_PROMOTED_NOTIFICATIONS` permission and a receiver to the manifest.
+- `PushPilot.status(callback)` gives a status screen the installation id, the live flags of the last accepted sync and the last sync result; it holds no token.
 
 ## 2.0.0 (2026-11-17)
 

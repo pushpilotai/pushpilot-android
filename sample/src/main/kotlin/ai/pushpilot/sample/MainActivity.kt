@@ -13,6 +13,8 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.DateFormat
+import java.util.Date
 import java.util.UUID
 
 class MainActivity : Activity() {
@@ -21,7 +23,10 @@ class MainActivity : Activity() {
         var routeLinks = false
     }
 
-    /** Builds a plain screen with one button per SDK call and asks for notification permission. */
+    /** What the SDK has reported, refreshed on resume and with the Refresh button. */
+    private lateinit var statusView: TextView
+
+    /** Builds a plain screen with the SDK's status, one button per SDK call, and asks for notification permission. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val userId = EditText(this).apply { hint = "External user id" }
@@ -31,6 +36,9 @@ class MainActivity : Activity() {
             fitsSystemWindows = true
             setPadding(48, 48, 48, 48)
         }
+        statusView = TextView(this).apply { setTextIsSelectable(true) }
+        layout.addView(statusView)
+        layout.addView(button("Refresh status") { refreshStatus() })
         layout.addView(userId)
         layout.addView(button("Set user id") { PushPilot.setExternalUserId(userId.text.toString()) })
         layout.addView(topics)
@@ -57,6 +65,29 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
+    }
+
+    /** Re-reads the status whenever the screen comes back, as permission and syncs change it. */
+    override fun onResume() {
+        super.onResume()
+        refreshStatus()
+    }
+
+    /** Shows the server, installation id, live activity flags and the last sync. */
+    private fun refreshStatus() {
+        PushPilot.status { s ->
+            /** "yes", "no", or "not reported" before the server accepted a sync. */
+            fun yesNo(value: Boolean?) = value?.let { if (it) "yes" else "no" } ?: "not reported"
+            statusView.text = listOf(
+                "Server: ${BuildConfig.PUSHPILOT_BASE_URL.ifEmpty { PushPilot.DEFAULT_BASE_URL }}",
+                "Installation id: ${s.installationId ?: "-"}",
+                "Live activities supported: ${yesNo(s.liveSupported)}",
+                "Live activities on: ${yesNo(s.liveEnabled)}",
+                "Promoted look allowed: ${yesNo(s.livePromoted)}",
+                "Last sync: ${s.lastSyncResult ?: "none yet"}" +
+                    (s.lastSyncAtMs?.let { " (accepted ${DateFormat.getTimeInstance().format(Date(it))})" } ?: ""),
+            ).joinToString("\n")
         }
     }
 
