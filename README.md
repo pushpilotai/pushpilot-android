@@ -112,7 +112,7 @@ The `sample/` app shows all of the above.
 
 ## Live activities
 
-From 2.1.0, `handleMessage` also draws live activities (PushPilot's Live Updates): one notification per activity that stays while something happens, such as a score, a delivery or an upload, and changes with each update. You send them from the dashboard, a campaign or the server API; the app needs no code beyond `handleMessage`.
+From 2.1.1, `handleMessage` also draws live activities (PushPilot's Live Updates): one notification per activity that stays while something happens, such as a score, a delivery or an upload, and changes with each update. You send them from the dashboard, a campaign or the server API; the app needs no code beyond `handleMessage`.
 
 - **How it looks.** The activity's layout is drawn as a custom view on the "Live updates" channel (`pushpilot_live`, default importance: it sounds when it starts and when an update carries an alert, and updates quietly otherwise). On Android 16 with the user's permission for promoted notifications, an activity sent as promoted shows as a Live Update instead: the layout's title, text, status chip, segmented progress with a tracker icon, picture and timer, in the status bar and on the lock screen.
 - **Icons.** The SDK ships the PushPilot icon list as Material Symbols vector drawables named `pushpilot_live_<name>`. A layout can also name one of your own drawables.
