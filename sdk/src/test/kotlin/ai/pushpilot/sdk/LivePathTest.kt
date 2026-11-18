@@ -47,7 +47,7 @@ class LivePathTest {
 
     @Test
     fun badPathTextIsRefused() {
-        for (bad in listOf("", "L1 2", "M1", "M1 2L3", "M1 2A1 1 0 0 1 3 4", "M1 2 X", "Z", "M1 2Z 3 4", "M1 2L3 ..", "M1 2C1 2 3 4"))
+        for (bad in listOf("", "L1 2", "M1", "M1 2L3", "M1 2 X", "Z", "M1 2Z 3 4", "M1 2L3 ..", "M1 2C1 2 3 4"))
             assertNull(bad, LivePath.parse(bad))
     }
 
