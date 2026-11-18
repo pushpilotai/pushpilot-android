@@ -316,9 +316,16 @@ internal class LiveViews(
         return Part(views, R.id.pushpilot_live_progress)
     }
 
-    /** A chronometer counting down to, or up from, a time field, with the text's size and colour (weight on Android 16); nothing when the field is missing. */
+    /**
+     * A chronometer counting down to, or up from, a time field, with the text's size and colour
+     * (weight on Android 16); nothing when the field is missing. A chronometer only counts as a
+     * clock, so another `format` is a text of the value when the step is drawn.
+     */
     private fun timer(block: JSONObject): Part? {
         val at = live.time(block.optString("field")) ?: return null
+        if (block.optString("format").ifEmpty { "clock" } != "clock") {
+            return text(JSONObject(block.toString()).put("type", "text").put("text", painter.text.timer(block)).apply { remove("runs") })
+        }
         val views = RemoteViews(pkg, R.layout.pushpilot_live_timer)
         val id = R.id.pushpilot_live_timer
         views.setChronometer(id, SystemClock.elapsedRealtime() + (at * 1000 - nowMs), null, true)
@@ -364,7 +371,7 @@ internal class LiveViews(
         private val PAINTED_TYPES = setOf("shape", "arc", "path", "use", "chart", "grid")
 
         /** Box keys only the painter applies. */
-        private val PAINTED_KEYS = listOf("rotate", "offset", "fw", "fh", "border", "clip", "radius")
+        private val PAINTED_KEYS = listOf("rotate", "offset", "fw", "fh", "border", "clip", "radius", "pos")
 
         /** Bitmap bytes allowed in one notification view, well under the system's limit for custom views. */
         private const val BITMAP_BUDGET = 3_000_000L

@@ -72,7 +72,8 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
         if (alpha < 1f) c.saveLayerAlpha(null, (alpha * 255).toInt())
         val box = RectF(0f, 0f, n.w, n.h)
         val radii = LiveBox.radius(b)
-        LiveBox.color(b.optString("bg"), live.accent)?.let { c.drawPath(rounded(box, radii), fill(it)) }
+        // Any colour name here, `primary` too: a def's unset `$name` colour draws primary.
+        b.optString("bg").takeIf { it.isNotEmpty() }?.let { c.drawPath(rounded(box, radii), fill(text.color(it))) }
         val clip = b.optBoolean("clip")
         if (clip) {
             c.save()
@@ -146,7 +147,7 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
         if (side <= 0f) return
         val square = RectF(box.centerX() - side / 2, box.centerY() - side / 2, box.centerX() + side / 2, box.centerY() + side / 2)
         val value = if (b.has("from") && b.has("to")) live.fraction(b, nowMs) else LiveBox.amount(b.opt("value"), live)
-        val pieces = LiveGeometry.arcPieces(b.optDouble("start", 0.0).toFloat(), b.optDouble("sweep", 360.0).toFloat().coerceIn(1f, 360f), b.optInt("segments", 1), b.optDouble("gap", 0.0).toFloat(), value)
+        val pieces = LiveGeometry.arcPieces(LiveBox.angle(b.opt("start"), live), b.optDouble("sweep", 360.0).toFloat().coerceIn(1f, 360f), b.optInt("segments", 1), b.optDouble("gap", 0.0).toFloat(), value)
         val colors = b.optJSONArray("colors")?.let { a -> (0 until a.length()).map { text.color(a.optString(it)) } }
             ?: listOf(text.color(b.optString("color").ifEmpty { "accent" }))
         val track = b.optString("track").takeIf { it.isNotEmpty() }?.let { text.color(it) }
@@ -193,7 +194,7 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
         c.restore()
     }
 
-    /** A bar, line or area chart of a `numbers` field or fixed values, split into two colours, with a highlight and a last-point dot. */
+    /** A bar, line or area chart of a `numbers` field or fixed values, split into two colours, with a highlight and a last-point dot; bars from the bottom or the middle (`base`), all corners rounded with `round`. */
     private fun chart(c: Canvas, b: JSONObject, x: Float, y: Float, w: Float, h: Float) {
         val raw: JSONArray = b.optJSONArray("values") ?: live.values.optJSONArray(b.optString("values")) ?: return
         val values = (0 until raw.length()).mapNotNull { (raw.opt(it) as? Number)?.toDouble() }
@@ -208,11 +209,11 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
         c.save()
         c.translate(x, y)
         if (kind == "bar") {
-            val bars = LiveGeometry.chartBars(values, lo, hi, w, h, b.optDouble("gap", 2.0).toFloat())
+            val bars = LiveGeometry.chartBars(values, lo, hi, w, h, b.optDouble("gap", 2.0).toFloat(), b.optString("base") == "center")
             bars.forEachIndexed { i, r ->
                 val paint = fill(if (i == highlight && highlightColor != null) highlightColor else if (i < split * bars.size) color else rest)
-                val top = if (b.optBoolean("round")) min(r.w / 2, r.h) else 0f
-                c.drawPath(rounded(RectF(r.x, r.y, r.x + r.w, r.y + r.h), floatArrayOf(top, top, 0f, 0f)), paint)
+                val corner = if (b.optBoolean("round")) min(r.w, r.h) / 2 else 0f
+                c.drawPath(rounded(RectF(r.x, r.y, r.x + r.w, r.y + r.h), FloatArray(4) { corner }), paint)
             }
         } else {
             val pts = LiveGeometry.chartPoints(values, lo, hi, w, h)
