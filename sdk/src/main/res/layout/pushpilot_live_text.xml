@@ -3,6 +3,7 @@
     android:id="@+id/pushpilot_live_text"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:includeFontPadding="false"
     android:ellipsize="end"
     android:maxLines="1"
     android:textAppearance="@android:style/TextAppearance.Material.Notification" />
