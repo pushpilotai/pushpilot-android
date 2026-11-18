@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A live layout's layer, as large as its largest item. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pushpilot_live_box"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content" />

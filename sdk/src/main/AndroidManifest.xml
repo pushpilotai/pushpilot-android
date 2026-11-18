@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Declared so apps targeting Android 13+ can ask for it; the SDK itself never asks. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets Android 16 show live activities as promoted (Live Updates); the user can turn it off. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <application>
         <!-- Body taps and link buttons: records the click, then opens the link or the app. -->
@@ -18,6 +20,11 @@
         <!-- Buttons without a link: records the click and dismisses. -->
         <receiver
             android:name=".ActionReceiver"
+            android:exported="false" />
+
+        <!-- A live notification swiped away: records live_dismissed once. -->
+        <receiver
+            android:name=".LiveReceiver"
             android:exported="false" />
     </application>
 </manifest>

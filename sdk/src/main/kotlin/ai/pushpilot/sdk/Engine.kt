@@ -40,11 +40,16 @@ internal class Engine(
     private val transport: Transport,
     private val scheduler: Scheduler,
     private val random: Random = Random.Default,
-    private val device: () -> Map<String, String>,
+    private val device: () -> Map<String, Any>,
 ) {
     private var scheduled = false
     private var blockedUntil = 0L
     private var failures = 0
+    /** Why the last request was retried, for [lastSyncResult]. */
+    private var lastFailure = ""
+    /** The outcome of the last register or sync tried in this process, for [PushPilot.status]; null before one. */
+    var lastSyncResult: String? = null
+        private set
 
     /** Creates the installation id on first launch, then syncs if anything changed or the last sync is a day old. */
     fun start() {
@@ -100,7 +105,7 @@ internal class Engine(
         update(TOPICS to JSONArray(unique.take(MAX_TOPICS)).toString())
     }
 
-    /** Queues a tracking event (`delivered` or `clicked`) for this installation; the oldest are dropped past the cap. */
+    /** Queues a tracking event (`delivered`, `clicked`, `live_started` or `live_dismissed`) for this installation; the oldest are dropped past the cap. */
     fun track(notificationId: String, type: String, buttonId: String? = null) {
         val event = JSONObject()
             .put("notification_id", notificationId)
@@ -168,7 +173,14 @@ internal class Engine(
     private fun sync(): Boolean {
         val payload = payload()
         if (payload == store.get(SENT)) return true
-        val response = post(if (store.get(SYNCED_AT) == null) "register" else "sync", payload) ?: return false
+        val path = if (store.get(SYNCED_AT) == null) "register" else "sync"
+        val response = post(path, payload)
+        lastSyncResult = when {
+            response == null -> "$path: failed ($lastFailure), retrying"
+            response.code !in 200..299 -> "$path: rejected (HTTP ${response.code})"
+            else -> "$path: OK (HTTP ${response.code})"
+        }
+        if (response == null) return false
         if (response.code !in 200..299) return true
         val json = try { JSONObject(response.body) } catch (e: Exception) { null }
         json?.optJSONArray("warnings")?.takeIf { it.length() > 0 }?.let { log("server warnings: $it") }
@@ -197,6 +209,7 @@ internal class Engine(
         val response = transport.post(path, json)
         val code = response.code
         if (code == 429 || code >= 500 || code < 0) {
+            lastFailure = if (code < 0) "no answer" else "HTTP $code"
             failures++
             blockedUntil = scheduler.now() + maxOf(backoff(), response.retryAfterSeconds * 1000)
             kick(0)
@@ -205,6 +218,21 @@ internal class Engine(
         failures = 0
         if (code !in 200..299) log("$path rejected with HTTP $code; not retried")
         return response
+    }
+
+    /** What the SDK has reported: the installation id, the `live` object the server last accepted, and the last sync. */
+    fun status(): PushPilot.Status {
+        val live = store.get(SENT)?.let { try { JSONObject(it).optJSONObject("live") } catch (e: Exception) { null } }
+        /** One flag of the reported `live` object, or null when none was reported. */
+        fun flag(name: String): Boolean? = live?.takeIf { it.has(name) }?.optBoolean(name)
+        return PushPilot.Status(
+            installationId = store.get(ID),
+            liveSupported = flag("supported"),
+            liveEnabled = flag("enabled"),
+            livePromoted = flag("promoted"),
+            lastSyncAtMs = store.get(SYNCED_AT)?.toLongOrNull(),
+            lastSyncResult = lastSyncResult,
+        )
     }
 
     /** 1 s doubling to 5 min, each wait randomised to between half and all of it. */

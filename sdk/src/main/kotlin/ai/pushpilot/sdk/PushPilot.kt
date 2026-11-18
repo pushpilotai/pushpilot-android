@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import org.json.JSONException
 import org.json.JSONObject
@@ -61,7 +62,7 @@ object PushPilot {
             val app = context.applicationContext ?: context
             val store = store(app)
             dispatcher.init(store, sdkKey.trim(), baseUrl ?: DEFAULT_BASE_URL) { engine(app, store) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             log("init failed: ${e.javaClass.simpleName}")
         }
     }
@@ -93,6 +94,27 @@ object PushPilot {
     @JvmStatic
     fun setPushToken(token: String?) = dispatcher.submit { setPushToken(token) }
 
+    /**
+     * What the SDK has reported for this installation, for a status or debug screen. The live flags
+     * are those of the last sync the server accepted (null before one). It holds no token or key.
+     */
+    data class Status(
+        val installationId: String?,
+        val liveSupported: Boolean?,
+        val liveEnabled: Boolean?,
+        /** The user lets the app post promoted notifications (Android 16 and later). */
+        val livePromoted: Boolean?,
+        val lastSyncAtMs: Long?,
+        val lastSyncResult: String?,
+    )
+
+    /** Calls [callback] on the main thread with the SDK's [Status]; before init it waits for the SDK to start. */
+    @JvmStatic
+    fun status(callback: (Status) -> Unit) = dispatcher.submit {
+        val status = status()
+        Handler(Looper.getMainLooper()).post { callback(status) }
+    }
+
     /** Links this installation to the app's own user id after login; null clears it. */
     @JvmStatic
     fun setExternalUserId(id: String?) = dispatcher.submit { setExternalUserId(id) }
@@ -121,7 +143,8 @@ object PushPilot {
 
     /**
      * Call from `onMessageReceived` with `RemoteMessage.data`. For a PushPilot push it reports
-     * delivery, shows the notification (with image and buttons) and returns true; for any
+     * delivery, shows the notification (with image and buttons) and returns true; a live activity
+     * step draws, updates or ends that activity's notification instead; for any
      * other push it does nothing and returns false. Off the main thread it waits for the image
      * download, as FCM expects; on the main thread it shows the notification in the background.
      */
@@ -130,6 +153,7 @@ object PushPilot {
         if (!Push.isOurs(data)) return false
         try {
             startFromSaved(context)
+            if (LiveUpdate.isLive(data)) return true.also { showLive(context, data) }
             // Ours but unreadable: swallowed, so the app never shows it as its own push. parse logs why.
             val push = Push.parse(data) ?: return true
             val app = context.applicationContext ?: context
@@ -137,15 +161,30 @@ object PushPilot {
             val show = {
                 try {
                     Notifier.show(app, push)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     log("push not shown: ${e.javaClass.simpleName}")
                 }
             }
             if (Looper.myLooper() == Looper.getMainLooper()) Thread { show() }.start() else show()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // Throwable, not Exception: a failed class init is an Error, and a push must never crash the app.
             log("handleMessage failed: ${e.javaClass.simpleName}")
         }
         return true
+    }
+
+    /** Draws a live activity step like [handleMessage] draws a push: in the background on the main thread. */
+    private fun showLive(context: Context, data: Map<String, String>) {
+        val update = LiveUpdate.parse(data) ?: return
+        val app = context.applicationContext ?: context
+        val show = {
+            try {
+                LiveNotifier.show(app, update)
+            } catch (e: Throwable) {
+                log("live activity not shown: ${e.javaClass.simpleName}")
+            }
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) Thread { show() }.start() else show()
     }
 
     /**
@@ -178,7 +217,7 @@ object PushPilot {
     @JvmStatic
     fun tappedNotification(intent: Intent?): TappedNotification? = try {
         intent?.let { TappedNotification.from(it.getStringExtra(Notifier.EXTRA_NOTIFICATION_ID), it.getStringExtra(Notifier.EXTRA_DATA)) }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         // A malformed extras bundle from another app must not crash the caller.
         null
     }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An icon, tinted like the notification's text unless the layout gives a colour. -->
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pushpilot_live_image"
+    android:layout_width="24dp"
+    android:layout_height="24dp"
+    android:layout_gravity="center_vertical"
+    android:importantForAccessibility="no"
+    android:scaleType="fitCenter"
+    android:tint="?android:attr/textColorPrimary" />

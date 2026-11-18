@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A live layout's layer, full width: its items are drawn on top of each other, first at the back. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pushpilot_live_box"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content" />
