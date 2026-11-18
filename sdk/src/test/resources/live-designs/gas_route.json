@@ -5,9 +5,9 @@
 "car":{"type":"layer","w":38,"h":20,"radius":8,"bg":"$c","items":[
  {"type":"shape","shape":"rect","at":"trailing","offset":[-8,0],"w":8,"h":14,"fill":"#1C1C1E"}]},
 "post":{"type":"shape","shape":"rect","w":4,"h":12,"fill":"#8E8E93"},
-"scene":{"type":"layer","items":[
+"scene":{"type":"layer","fw":1,"fh":1,"items":[
  {"type":"layer","at":"bottom","h":36,"bg":"#2C2C2E","items":[
-  {"type":"shape","shape":"line","h":2,"offset":[0,1],"stroke":"#FFFFFF","width":2,"dash":[6,6]},
+  {"type":"shape","shape":"line","h":2,"stroke":"#FFFFFF","width":2,"dash":[6,6]},
   {"type":"use","ref":"car","pos":["car",0.583]}]},
  {"type":"row","at":"bottom","pad":[0,20,36,0],"spacing":18,"align":"bottom","items":[
   {"type":"spacer"},

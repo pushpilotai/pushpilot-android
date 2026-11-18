@@ -38,7 +38,7 @@
  {"type":"arc","w":34,"h":34,"value":"paid","segments":6,"gap":10,"width":6,"cap":"butt","color":"#0863D1","track":"#C9D3DF"},
  {"type":"column","align":"leading","items":[
   {"type":"text","text":"Dinner split","size":12,"weight":"bold","color":"#3A5068"},
-  {"type":"text","text":"{{due}} to go","size":20,"weight":"heavy","mono":true,"color":"#0B1B2B"}]}]},
+  {"type":"text","text":"{{due}} to go","size":15,"weight":"heavy","mono":true,"color":"#0B1B2B"}]}]},
 "promoted":{"title":"{{due}} to go","text":"{{waiting}} are yet to pay","chip":"{{paid_n}}/{{people}}",
  "progress":{"type":"progress","value":"paid","segments":6,"color":"#0863D1"}}},
 "state":{"title":"Friday dinner split","paid_n":4,"people":6,"paid":0.667,"due":"₹1,200","waiting":"Ravi and Neha","mine":"₹600"}}

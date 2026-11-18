@@ -31,7 +31,7 @@
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#30D158","items":[
  {"type":"text","text":"{{aqi}}","w":44,"h":44,"radius":22,"bg":"#000000","align":"center","size":18,"weight":"heavy","mono":true,"color":"#30D158"},
  {"type":"column","align":"leading","items":[
-  {"type":"text","text":"Air just turned good","size":12,"weight":"bold","color":"#000000"},
+  {"type":"text","text":"Air turned good","size":12,"weight":"bold","color":"#000000"},
   {"type":"text","text":"{{headline}}","size":24,"weight":"heavy","color":"#000000"}]}]},
 "promoted":{"title":"{{headline}}: the air just turned good","text":"AQI {{aqi}} at {{place}} · good for {{window}}","chip":"AQI {{aqi}}"}},
 "state":{"title":"Air quality","headline":"Go run","place":"Koramangala","window":"50 min","aqi":42,"needle":0.21}}
