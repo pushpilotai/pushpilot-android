@@ -33,7 +33,6 @@ internal class LiveViews(
     private val nowMs: Long,
 ) {
     private val pkg = context.packageName
-    private val sdk = Build.VERSION.SDK_INT
     private val metrics = context.resources.displayMetrics
     private val painter by lazy { LiveCanvas(context, live, nowMs, this) }
     private var budget = 0L
@@ -76,13 +75,13 @@ internal class LiveViews(
     }
 
     /** The custom view's width in dp: the screen less the shade's and the template's margins. */
-    private fun cardWidth(): Float = metrics.widthPixels / metrics.density - if (sdk >= 31) CARD_MARGIN else OLD_CARD_MARGIN
+    private fun cardWidth(): Float = metrics.widthPixels / metrics.density - if (Build.VERSION.SDK_INT >= 31) CARD_MARGIN else OLD_CARD_MARGIN
 
     /** True when views cannot draw the block itself, so it is painted. */
     fun painted(b: JSONObject): Boolean = when {
         b.optString("type") in PAINTED_TYPES -> true
         PAINTED_KEYS.any { b.has(it) } -> true
-        (b.has("w") || b.has("h")) && sdk < 31 -> true
+        (b.has("w") || b.has("h")) && Build.VERSION.SDK_INT < 31 -> true
         else -> false
     }
 
@@ -115,7 +114,7 @@ internal class LiveViews(
         if (pad.any { it != 0f }) v.setViewPadding(id, px(pad[3]), px(pad[0]), px(pad[1]), px(pad[2]))
         LiveBox.color(b.optString("bg"), live.accent)?.let { v.setInt(id, "setBackgroundColor", it) }
         LiveBox.opacity(b).takeIf { it < 1f }?.let { v.setFloat(id, "setAlpha", it) }
-        if (sdk >= 31) {
+        if (Build.VERSION.SDK_INT >= 31) {
             LiveBox.num(b, "w")?.let { v.setViewLayoutWidth(id, it * zoom, TypedValue.COMPLEX_UNIT_DIP) }
             LiveBox.num(b, "h")?.let { v.setViewLayoutHeight(id, it * zoom, TypedValue.COMPLEX_UNIT_DIP) }
         }
@@ -176,7 +175,7 @@ internal class LiveViews(
             val type = child.block.optString("type")
             // As LiveLayout: no spacing beside a spacer.
             val spaced = previous != null && previous != "spacer" && type != "spacer"
-            if (spaced && sdk >= 31) {
+            if (spaced && Build.VERSION.SDK_INT >= 31) {
                 part.views.setViewLayoutMargin(part.id, if (row) RemoteViews.MARGIN_START else RemoteViews.MARGIN_TOP, spacing * zoom, TypedValue.COMPLEX_UNIT_DIP)
             } else if (spaced && gap != 0) {
                 views.addView(R.id.pushpilot_live_box, RemoteViews(pkg, gap))
@@ -263,7 +262,7 @@ internal class LiveViews(
         val size = LiveBox.num(block, "size")
         if (size != null) views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_DIP, size * zoom) else views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, size(block.optString("style")))
         // shortcut: TextView's letter spacing and font features are remotable on Android 16 (checked on the device); older ones skip them.
-        if (sdk >= 36) {
+        if (Build.VERSION.SDK_INT >= 36) {
             block.optDouble("tracking", 0.0).takeIf { it != 0.0 }?.let { views.setFloat(id, "setLetterSpacing", it.toFloat()) }
             if (block.optBoolean("mono")) views.setString(id, "setFontFeatureSettings", "tnum")
         }
@@ -275,7 +274,7 @@ internal class LiveViews(
         views.setTextViewText(R.id.pushpilot_live_text, painter.text.content(block))
         val fill = color(block.optString("color").ifEmpty { "accent" }) ?: return Part(views, R.id.pushpilot_live_text)
         // shortcut: no tint API for a RemoteViews background before 31, so older Androids get a square box.
-        if (sdk >= 31) {
+        if (Build.VERSION.SDK_INT >= 31) {
             views.setColorStateList(R.id.pushpilot_live_text, "setBackgroundTintList", ColorStateList.valueOf(fill))
         } else {
             views.setInt(R.id.pushpilot_live_text, "setBackgroundColor", fill)
@@ -311,7 +310,7 @@ internal class LiveViews(
         val views = RemoteViews(pkg, R.layout.pushpilot_live_progress)
         views.setProgressBar(R.id.pushpilot_live_progress, 1000, (live.fraction(block, nowMs) * 1000).toInt(), false)
         val tint = color(block.optString("color").ifEmpty { "accent" })
-        if (tint != null && sdk >= 31) {
+        if (tint != null && Build.VERSION.SDK_INT >= 31) {
             views.setColorStateList(R.id.pushpilot_live_progress, "setProgressTintList", ColorStateList.valueOf(tint))
         }
         return Part(views, R.id.pushpilot_live_progress)
@@ -323,10 +322,10 @@ internal class LiveViews(
         val views = RemoteViews(pkg, R.layout.pushpilot_live_timer)
         val id = R.id.pushpilot_live_timer
         views.setChronometer(id, SystemClock.elapsedRealtime() + (at * 1000 - nowMs), null, true)
-        if (sdk >= 24) views.setChronometerCountDown(id, block.optString("mode") != "up")
+        if (Build.VERSION.SDK_INT >= 24) views.setChronometerCountDown(id, block.optString("mode") != "up")
         textSize(views, id, block)
         val weight = painter.text.weight(block)
-        if (sdk >= 36 && weight != 400) views.setString(id, "setFontVariationSettings", "'wght' $weight")
+        if (Build.VERSION.SDK_INT >= 36 && weight != 400) views.setString(id, "setFontVariationSettings", "'wght' $weight")
         tint(views, id, block.optString("color"))
         return Part(views, id)
     }
