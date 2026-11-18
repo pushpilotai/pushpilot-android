@@ -1,5 +1,15 @@
 package ai.pushpilot.sdk
 
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.math.tan
+
 /** A point in a path's coordinates. */
 internal data class Pt(val x: Float, val y: Float)
 
@@ -22,15 +32,15 @@ internal sealed class PathOp {
 }
 
 /**
- * The `path` block's `d` text (SVG commands `M L H V C S Q T Z`, upper case absolute, lower case
- * relative; LIVE.md "Contract version 2") and the geometry of `trim` and `marker`. No regex and no
- * Android types, so JVM tests cover all of it.
+ * The `path` block's `d` text (SVG commands `M L H V C S Q T A Z`, upper case absolute, lower case
+ * relative; LIVE.md "Contract version 2" and its round two) and the geometry of `trim` and `marker`.
+ * Arcs become cubic curves as SVG specifies. No regex and no Android types, so JVM tests cover all of it.
  */
 internal object LivePath {
-    private const val COMMANDS = "MmLlHhVvCcSsQqTtZz"
+    private const val COMMANDS = "MmLlHhVvCcSsQqTtAaZz"
     private const val MAX_LENGTH = 4_000
 
-    /** The commands of [d] as absolute operations, or null when it is not valid path text (`A` included). */
+    /** The commands of [d] as absolute operations (arcs as cubic curves), or null when it is not valid path text. */
     fun parse(d: String): List<PathOp>? {
         if (d.length > MAX_LENGTH) return null
         val reader = Reader(d)
@@ -124,10 +134,66 @@ internal object LivePath {
                     last = 'Q'
                     continue
                 }
+                'A' -> {
+                    val rx = reader.number() ?: return null
+                    val ry = reader.number() ?: return null
+                    val turn = reader.number() ?: return null
+                    val large = reader.flag() ?: return null
+                    val sweep = reader.flag() ?: return null
+                    val x = ox + (reader.number() ?: return null)
+                    val y = oy + (reader.number() ?: return null)
+                    arc(out, cx, cy, rx, ry, turn, large, sweep, x, y)
+                    cx = x; cy = y
+                }
             }
             last = 'L'
         }
         return out.takeIf { it.isNotEmpty() && it[0] is PathOp.Move }
+    }
+
+    /**
+     * Appends an SVG elliptical arc from ([x1], [y1]) to ([x2], [y2]) as cubic curves, one per
+     * quarter turn or less (SVG 1.1 appendix F.6: radii scaled up when too small, a line when a
+     * radius is 0, nothing when the ends meet).
+     */
+    private fun arc(out: MutableList<PathOp>, x1: Float, y1: Float, rx0: Float, ry0: Float, turnDeg: Float, large: Boolean, sweep: Boolean, x2: Float, y2: Float) {
+        if (x1 == x2 && y1 == y2) return
+        var rx = abs(rx0.toDouble())
+        var ry = abs(ry0.toDouble())
+        if (rx == 0.0 || ry == 0.0) { out += PathOp.Line(x2, y2); return }
+        val phi = Math.toRadians(turnDeg.toDouble())
+        val cosP = cos(phi)
+        val sinP = sin(phi)
+        val dx = (x1 - x2) / 2.0
+        val dy = (y1 - y2) / 2.0
+        val px = cosP * dx + sinP * dy
+        val py = -sinP * dx + cosP * dy
+        val lambda = px * px / (rx * rx) + py * py / (ry * ry)
+        if (lambda > 1) { rx *= sqrt(lambda); ry *= sqrt(lambda) }
+        val num = rx * rx * ry * ry - rx * rx * py * py - ry * ry * px * px
+        val den = rx * rx * py * py + ry * ry * px * px
+        val coef = (if (large != sweep) 1 else -1) * sqrt(max(0.0, num / den))
+        val ccx = coef * rx * py / ry
+        val ccy = -coef * ry * px / rx
+        val cx = cosP * ccx - sinP * ccy + (x1 + x2) / 2.0
+        val cy = sinP * ccx + cosP * ccy + (y1 + y2) / 2.0
+        val start = atan2((py - ccy) / ry, (px - ccx) / rx)
+        var delta = atan2((-py - ccy) / ry, (-px - ccx) / rx) - start
+        if (sweep && delta < 0) delta += 2 * PI
+        if (!sweep && delta > 0) delta -= 2 * PI
+        val n = ceil(abs(delta) / (PI / 2) - 1e-9).toInt().coerceAtLeast(1)
+        val step = delta / n
+        val k = 4.0 / 3.0 * tan(step / 4)
+        /** A point on the unit circle at ([ux], [uy]) mapped onto the ellipse. */
+        fun at(ux: Double, uy: Double) = Pt((cx + rx * cosP * ux - ry * sinP * uy).toFloat(), (cy + rx * sinP * ux + ry * cosP * uy).toFloat())
+        for (i in 0 until n) {
+            val a = start + i * step
+            val b = a + step
+            val c1 = at(cos(a) - k * sin(a), sin(a) + k * cos(a))
+            val c2 = at(cos(b) + k * sin(b), sin(b) - k * cos(b))
+            val end = if (i == n - 1) Pt(x2, y2) else at(cos(b), sin(b))
+            out += PathOp.Cubic(c1.x, c1.y, c2.x, c2.y, end.x, end.y)
+        }
     }
 
     /** The outlines as polylines, each curve cut into [steps] straight pieces; a close returns to the outline's start. */
@@ -230,6 +296,13 @@ internal object LivePath {
 
         /** Moves past spaces and commas. */
         fun skip() { while (i < s.length && (s[i].isWhitespace() || s[i] == ',')) i++ }
+
+        /** The next arc flag, `0` or `1`, which needs no separator after it (`a1 1 0 013 4`); null otherwise. */
+        fun flag(): Boolean? {
+            skip()
+            if (i >= s.length || (s[i] != '0' && s[i] != '1')) return null
+            return s[i++] == '1'
+        }
 
         /** The next number, or null when the text has none here. */
         fun number(): Float? {
