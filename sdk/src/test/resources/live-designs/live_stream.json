@@ -30,7 +30,8 @@
   {"type":"layer","w":44,"h":44,"radius":12,"bg":"#2C2C2E","items":[{"type":"icon","name":"live","color":"#FF453A","size":"m"}]},
   {"type":"column","spacing":3,"items":[
    {"type":"text","text":"{{title}}","size":16,"weight":"semibold","color":"#FFFFFF","lines":1},
-   {"type":"text","text":"{{note}}","size":12,"color":"#A1A1A8","lines":1}]}]},
+   {"type":"text","text":"{{note}}","size":12,"color":"#A1A1A8","lines":1}]},
+  {"type":"spacer"}]},
  "compact_leading":{"type":"row","spacing":6,"items":[
   {"type":"shape","shape":"circle","w":8,"h":8,"fill":"#FF453A"},
   {"type":"text","text":"LIVE","size":12,"weight":"bold","tracking":0.06,"color":"#FF453A"}]},
@@ -39,7 +40,7 @@
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#FF453A","items":[
  {"type":"layer","w":40,"h":40,"radius":20,"bg":"#FFFFFF","items":[{"type":"icon","name":"live","color":"#FF453A","size":"m"}]},
  {"type":"column","items":[
-  {"type":"text","text":"Live · watching now","size":12,"weight":"bold","color":"#FFFFFF"},
+  {"type":"text","text":"Watching now","size":12,"weight":"bold","color":"#FFFFFF"},
   {"type":"text","text":"{{viewers}}","size":24,"weight":"heavy","mono":true,"color":"#FFFFFF"}]}]},
 "promoted":{"title":"{{title}}","text":"{{viewers}} watching · {{note}}","chip":"LIVE",
  "timer":{"type":"timer","field":"started","mode":"up"}}},

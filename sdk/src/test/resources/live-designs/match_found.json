@@ -14,7 +14,7 @@
  {"type":"layer","w":104,"h":104,"radius":52,"bg":"#000000","items":[
   {"type":"arc","w":97,"h":97,"from":"found","to":"deadline","width":7,"color":"#B8F04A","track":"#2C2C2E"},
   {"type":"column","align":"center","items":[
-   {"type":"timer","field":"deadline","mode":"down","size":36,"weight":"heavy","mono":true,"color":"#FFFFFF"},
+   {"type":"timer","field":"deadline","mode":"down","size":32,"weight":"heavy","mono":true,"color":"#FFFFFF"},
    {"type":"text","text":"ACCEPT","size":11,"weight":"heavy","color":"#B8F04A"}]}]}]},
 "island":{
  "leading":{"type":"spacer"},

@@ -41,7 +41,7 @@
  {"type":"icon","name":"trophy","color":"#000000","size":"l"},
  {"type":"column","items":[
   {"type":"text","text":"{{a_name}} vs {{b_name}}","size":12,"weight":"bold","color":"#000000"},
-  {"type":"text","runs":[{"text":"{{a_pct}}%","color":"#000000"},{"text":" · {{b_pct}}%","color":"#0A3D7A"}],"size":24,"weight":"heavy","mono":true}]}]},
+  {"type":"text","runs":[{"text":"{{a_pct}}%","color":"#000000"},{"text":" {{b_pct}}%","color":"#0A3D7A"}],"size":20,"weight":"heavy","mono":true}]}]},
 "promoted":{"title":"{{a_name}} {{a_pct}}% vs {{b_name}} {{b_pct}}%","text":"You backed {{pick}} · {{prize}}","chip":"{{a_pct}}%",
  "progress":{"type":"progress","value":"share","color":"#FF9F0A"},
  "timer":{"type":"timer","field":"closes","mode":"down"}}},

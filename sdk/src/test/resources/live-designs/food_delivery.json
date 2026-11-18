@@ -1,5 +1,5 @@
 {"name":"Food delivery","canvas":"Main.dc.html",
-"fields":[{"name":"note","kind":"text","max":40},{"name":"eta","kind":"number"},{"name":"step","kind":"number"},{"name":"share","kind":"number"}],
+"fields":[{"name":"note","kind":"text","max":40},{"name":"eta","kind":"number"},{"name":"step","kind":"number"},{"name":"cur","kind":"number"},{"name":"share","kind":"number"}],
 "layout":{
 "lock":{"type":"layer","h":160,"bg":"#FF9F0A","items":[
  {"type":"column","at":"top_leading","h":160,"pad":[20,22,20,22],"align":"leading","items":[
@@ -29,11 +29,9 @@
   {"type":"grid","h":6,"cols":4,"count":4,"filled":"step","gap":4,
    "tile":{"type":"shape","shape":"capsule","fill":"#FF9F0A"},
    "empty":{"type":"shape","shape":"capsule","fill":"#3A3A3C"}},
-  {"type":"row","spacing":0,"items":[
-   {"type":"text","text":"Confirmed","fw":0.25,"align":"leading","size":11,"color":"#A1A1A8"},
-   {"type":"text","text":"Preparing","fw":0.25,"align":"leading","size":11,"color":"#A1A1A8"},
-   {"type":"text","text":"On the way","fw":0.25,"align":"leading","size":11,"color":"#A1A1A8"},
-   {"type":"text","text":"Delivered","fw":0.25,"align":"leading","size":11,"color":"#A1A1A8"}]}]},
+  {"type":"grid","h":14,"cols":4,"count":4,"filled":4,"gap":4,"labels":["Confirmed","Preparing","On the way","Delivered"],"current":"cur",
+   "tile":{"type":"text","text":"{{label}}","align":"leading","size":11,"color":"#A1A1A8"},
+   "current_tile":{"type":"text","text":"{{label}}","align":"leading","size":11,"weight":"semibold","color":"#FFFFFF"}}]},
  "compact_leading":{"type":"icon","name":"bag","color":"#FF9F0A"},
  "compact_trailing":{"type":"text","text":"{{eta}} min","size":14,"weight":"semibold","mono":true,"color":"#FF9F0A"},
  "minimal":{"type":"icon","name":"bag","color":"#FF9F0A"}},
@@ -44,4 +42,4 @@
   {"type":"text","text":"{{eta}} min","size":24,"weight":"heavy","mono":true,"color":"#000000"}]}]},
 "promoted":{"title":"{{title}}","text":"{{note}}","chip":"{{eta}} min",
  "progress":{"type":"progress","value":"share","segments":4,"color":"#FF9F0A"}}},
-"state":{"title":"Order on the way","note":"Rider is 1.2 km away","eta":12,"step":3,"share":0.75}}
+"state":{"title":"Order on the way","note":"Rider is 1.2 km away","eta":12,"step":3,"cur":2,"share":0.75}}

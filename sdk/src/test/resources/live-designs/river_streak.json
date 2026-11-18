@@ -36,6 +36,6 @@
  {"type":"use","ref":"glyph","w":32,"h":20},
  {"type":"column","align":"leading","items":[
   {"type":"text","text":"Day {{day}} of {{of}}","size":12,"weight":"bold","color":"#9FE0FA"},
-  {"type":"text","text":"{{left}} left","size":22,"weight":"heavy","color":"#FFFFFF"}]}]},
+  {"type":"text","text":"{{left}}","size":22,"weight":"heavy","color":"#FFFFFF"}]}]},
 "promoted":{"title":"{{left}} to the lake","text":"Day {{day}} of {{of}} on your streak","chip":"Day {{day}}","progress":{"type":"progress","value":"trip","tracker":"ship","color":"#4DB8E8"}}},
 "state":{"title":"River streak","day":18,"of":30,"left":"12 days","trip":0.6}}

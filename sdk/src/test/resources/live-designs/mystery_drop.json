@@ -1,24 +1,16 @@
 {"name":"Mystery drop","canvas":"MysteryDrop.dc.html",
-"fields":[{"name":"l1","kind":"text","max":1},{"name":"l2","kind":"text","max":1},{"name":"l3","kind":"text","max":1},{"name":"l4","kind":"text","max":1},{"name":"l5","kind":"text","max":1},{"name":"l6","kind":"text","max":1},{"name":"l7","kind":"text","max":1},{"name":"l8","kind":"text","max":1},{"name":"clue","kind":"text","max":32},{"name":"reveal","kind":"time"},{"name":"step","kind":"number"}],
+"fields":[{"name":"word","kind":"text","max":8},{"name":"shown","kind":"numbers","max":8},{"name":"clue","kind":"text","max":32},{"name":"reveal","kind":"time"},{"name":"step","kind":"number"}],
 "layout":{
 "defs":{
-"tiles":{"type":"layer","w":322,"h":40,"items":[
-  {"type":"grid","w":322,"h":40,"cols":8,"count":8,"filled":8,"gap":6,"tile":{"type":"shape","shape":"rect","radius":8,"fill":"#2C2C2E","stroke":"#D48BFF","width":1}},
-  {"type":"row","spacing":6,"items":[
-   {"type":"text","text":"{{l1}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l2}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l3}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l4}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l5}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l6}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l7}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"},
-   {"type":"text","text":"{{l8}}","w":35,"size":18,"weight":"bold","color":"#FFFFFF"}]}]}},
+"tiles":{"type":"grid","w":322,"h":40,"cols":8,"count":8,"gap":6,"labels":"{{word}}","filled":"shown",
+ "tile":{"type":"text","text":"{{label}}","radius":8,"bg":"$on","border":{"color":"$edge","width":1},"size":18,"weight":"bold","color":"#FFFFFF"},
+ "empty":{"type":"text","text":"?","radius":8,"bg":"$off","size":16,"weight":"semibold","color":"$q"}}},
 "lock":{"type":"column","h":160,"bg":"#D48BFF","pad":[20,22,20,22],"items":[
  {"type":"row","items":[
   {"type":"text","text":"{{title}} · full reveal in","upper":true,"size":11,"weight":"heavy","tracking":0.06,"color":"#000000"},
   {"type":"timer","field":"reveal","mode":"down","size":11,"weight":"heavy","mono":true,"color":"#000000"}]},
  {"type":"spacer"},
- {"type":"use","ref":"tiles"},
+ {"type":"use","ref":"tiles","colors":{"on":"#000000","edge":"#000000","off":"#00000026","q":"#00000099"}},
  {"type":"spacer"},
  {"type":"text","text":"{{clue}}","size":13,"weight":"semibold","color":"#000000"}]},
 "island":{
@@ -30,7 +22,7 @@
   {"type":"timer","field":"reveal","mode":"down","size":20,"weight":"bold","mono":true,"color":"#D48BFF"}]},
  "center":{"type":"spacer"},
  "bottom":{"type":"column","spacing":12,"items":[
-  {"type":"use","ref":"tiles"},
+  {"type":"use","ref":"tiles","colors":{"on":"#2C2C2E","edge":"#D48BFF","off":"#1C1C1E","q":"#8E8E93"}},
   {"type":"row","items":[
    {"type":"text","text":"A new letter with every clue","size":12,"color":"#A1A1A8"},
    {"type":"spacer"},
@@ -42,7 +34,7 @@
  {"type":"icon","name":"lock","color":"#000000","size":"l"},
  {"type":"column","items":[
   {"type":"text","text":"{{title}}","size":12,"weight":"bold","color":"#000000"},
-  {"type":"text","text":"{{l1}}{{l2}}{{l3}}{{l4}}{{l5}}{{l6}}{{l7}}{{l8}}","size":22,"weight":"heavy","tracking":0.12,"mono":true,"color":"#000000"}]}]},
-"promoted":{"title":"{{title}}: {{l1}}{{l2}}{{l3}}{{l4}}{{l5}}{{l6}}{{l7}}{{l8}}","text":"{{clue}}","chip":"Clue {{step}}",
+  {"type":"text","text":"{{word}}","size":18,"weight":"heavy","tracking":0.06,"mono":true,"color":"#000000"}]}]},
+"promoted":{"title":"{{title}}: {{word}}","text":"{{clue}}","chip":"Clue {{step}}",
  "timer":{"type":"timer","field":"reveal","mode":"down"}}},
-"state":{"title":"Mystery drop","l1":"S","l2":"N","l3":"?","l4":"A","l5":"?","l6":"?","l7":"R","l8":"S","clue":"Clue 3 of 5: it comes in red","reveal":"2026-11-18T20:04:10+05:30","step":3}}
+"state":{"title":"Mystery drop","word":"SN?A??RS","shown":[1,1,0,1,0,0,1,1],"clue":"Clue 3 of 5: it comes in red","reveal":"2026-11-18T20:04:10+05:30","step":3}}

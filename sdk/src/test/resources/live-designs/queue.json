@@ -33,7 +33,7 @@
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#D48BFF","items":[
  {"type":"icon","name":"people","color":"#000000","size":"l"},
  {"type":"column","items":[
-  {"type":"text","text":"Now serving {{serving}}","size":12,"weight":"bold","color":"#000000"},
+  {"type":"text","text":"Serving {{serving}}","size":12,"weight":"bold","color":"#000000"},
   {"type":"text","text":"{{token}}","size":24,"weight":"heavy","mono":true,"color":"#000000"}]}]},
 "promoted":{"title":"Token {{token}} · now serving {{serving}}","text":"{{ahead}} people ahead of you · about {{mins}} min","chip":"{{token}}",
  "progress":{"type":"progress","value":"share","segments":6,"color":"#D48BFF"}}},

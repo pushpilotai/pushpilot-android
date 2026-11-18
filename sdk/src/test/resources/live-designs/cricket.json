@@ -15,8 +15,8 @@
   {"type":"text","text":"{{b_code}}","size":12,"weight":"heavy","tracking":0.06,"color":"#FFD60A"},
   {"type":"text","text":"{{b_score}}","size":24,"weight":"heavy","mono":true,"color":"#FFFFFFB3"},
   {"type":"text","text":"{{b_overs}}","size":11,"weight":"semibold","color":"#FFFFFFB3"}]},
- {"type":"layer","at":"bottom","fw":1,"h":6,"bg":"#00000033","items":[
-  {"type":"shape","shape":"rect","at":"leading","fw":"chase","fill":"#FFFFFF"}]}]},
+ {"type":"layer","at":"bottom","offset":[0,-10],"fw":0.88,"h":4,"radius":2,"bg":"#00000033","items":[
+  {"type":"shape","shape":"capsule","at":"leading","fw":"chase","fill":"#FFFFFF"}]}]},
 "island":{
  "leading":{"type":"column","spacing":2,"items":[
   {"type":"text","text":"{{a_code}}","size":12,"weight":"bold","color":"#0A84FF"},

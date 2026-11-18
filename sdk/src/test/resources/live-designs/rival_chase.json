@@ -26,22 +26,24 @@
  "bottom":{"type":"column","spacing":12,"items":[
   {"type":"column","spacing":8,"items":[
    {"type":"row","spacing":10,"items":[
-    {"type":"text","text":"{{rival}}","w":58,"size":12,"color":"#A1A1A8","lines":1},
+    {"type":"text","text":"{{rival}}","w":58,"size":12,"color":"#A1A1A8","lines":1,"align":"leading"},
     {"type":"shape","shape":"rect","h":8,"radius":4,"fill":"#8E8E93"},
     {"type":"text","text":"{{rival_pts}}","w":40,"align":"trailing","size":12,"weight":"semibold","mono":true,"color":"#A1A1A8"}]},
    {"type":"row","spacing":10,"items":[
-    {"type":"text","text":"You","w":58,"size":12,"weight":"semibold","color":"#FFFFFF"},
+    {"type":"text","text":"You","w":58,"size":12,"weight":"semibold","color":"#FFFFFF","align":"leading"},
     {"type":"layer","h":8,"radius":4,"bg":"#3A3A3C","items":[
      {"type":"shape","shape":"rect","at":"leading","fw":"share","h":8,"radius":4,"fill":"#FF6482"}]},
     {"type":"text","text":"{{my_pts}}","w":40,"align":"trailing","size":12,"weight":"semibold","mono":true,"color":"#FFFFFF"}]}]},
   {"type":"text","runs":[{"text":"{{tip}}","color":"#FFFFFF","weight":"semibold"},{"text":" put you on the podium","color":"#A1A1A8"}],"size":12,"lines":1}]},
  "compact_leading":{"type":"icon","name":"medal","color":"#FF6482"},
- "compact_trailing":{"type":"text","text":"−{{behind}}","size":14,"weight":"semibold","mono":true,"color":"#FF6482"},
+ "compact_trailing":{"type":"text","text":"−{{behind}}","size":14,"weight":"semibold","color":"#FF6482"},
  "minimal":{"type":"icon","name":"medal","color":"#FF6482"}},
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#FF6482","items":[
  {"type":"icon","name":"medal","size":"l","color":"#000000"},
  {"type":"column","items":[
   {"type":"text","text":"Behind {{rival}}","size":12,"weight":"bold","color":"#4A0716"},
-  {"type":"text","text":"−{{behind}} pts","size":24,"weight":"heavy","mono":true,"color":"#000000"}]}]},
-"promoted":{"title":"{{behind}} points behind {{rival}}","text":"#{{rank}} of {{total}} · contest ends soon","chip":"#{{rank}}","progress":{"type":"progress","value":"share","color":"#FF6482"},"timer":{"type":"timer","field":"ends","mode":"down"}}},
+  {"type":"text","text":"−{{behind}} pts","size":24,"weight":"heavy","color":"#000000"}]}]},
+"promoted":{"title":"{{behind}} points behind {{rival}}","text":"#{{rank}} of {{total}} · contest ends soon","chip":"#{{rank}}",
+ "progress":{"type":"progress","value":"share","color":"#FF6482"},
+ "timer":{"type":"timer","field":"ends","mode":"down"}}},
 "state":{"title":"Quiz contest","rank":4,"total":"1,206","behind":120,"rival":"Priya","rival_pts":"2,480","my_pts":"2,360","share":0.95,"ends":"2026-11-18T18:42:15+05:30","tip":"Two correct answers"}}

@@ -1,5 +1,5 @@
 {"name":"Event ticket","canvas":"EventTicket.dc.html",
-"fields":[{"name":"doors","kind":"time"},{"name":"gate","kind":"text","max":2},{"name":"seat","kind":"text","max":6},{"name":"event","kind":"text","max":20},{"name":"qa","kind":"number"},{"name":"qb","kind":"number"},{"name":"qc","kind":"number"}],
+"fields":[{"name":"doors","kind":"time"},{"name":"gate","kind":"text","max":2},{"name":"seat","kind":"text","max":6},{"name":"event","kind":"text","max":20},{"name":"qa","kind":"number"},{"name":"qb","kind":"number"},{"name":"qc","kind":"number"},{"name":"best","kind":"number"}],
 "layout":{
 "lock":{"type":"layer","h":160,"bg":"#FFF1CC","items":[
  {"type":"column","at":"top_leading","h":160,"pad":[20,0,20,22],"items":[
@@ -7,7 +7,7 @@
   {"type":"spacer"},
   {"type":"timer","field":"doors","mode":"down","size":62,"weight":"heavy","tracking":-0.04,"mono":true,"color":"#2B2110"},
   {"type":"spacer"},
-  {"type":"text","text":"Use Gate {{gate}}, the shortest queue","size":13,"weight":"bold","color":"#2B2110","lines":1}]},
+  {"type":"text","text":"Use Gate {{gate}}, the shortest queue","size":13,"weight":"bold","color":"#2B2110"}]},
  {"type":"shape","shape":"line","at":"top_trailing","offset":[-106,16],"w":2,"h":128,"stroke":"#A68B4B","width":2,"dash":[4,6]},
  {"type":"shape","shape":"circle","at":"top_trailing","offset":[-97,-11],"w":22,"h":22,"fill":"#D9C48C"},
  {"type":"shape","shape":"circle","at":"bottom_trailing","offset":[-97,11],"w":22,"h":22,"fill":"#D9C48C"},
@@ -20,29 +20,28 @@
 "island":{
  "leading":{"type":"column","items":[
   {"type":"text","text":"DOORS OPEN IN","size":11,"weight":"bold","tracking":0.08,"color":"#FFD23F"},
-  {"type":"timer","field":"doors","mode":"down","size":54,"weight":"heavy","tracking":-0.03,"mono":true,"color":"#FFFFFF"},
+  {"type":"timer","field":"doors","mode":"down","size":54,"weight":"heavy","mono":true,"color":"#FFFFFF"},
   {"type":"text","text":"{{event}}","size":13,"color":"#A1A1A8","lines":1}]},
  "trailing":{"type":"column","w":118,"spacing":8,"items":[
   {"type":"row","spacing":8,"items":[
-   {"type":"column","spacing":8,"items":[
-    {"type":"text","text":"Gate A","size":11,"color":"#A1A1A8"},
-    {"type":"text","text":"Gate B","size":11,"color":"#A1A1A8"},
-    {"type":"text","text":"Gate C","size":11,"weight":"bold","color":"#FFFFFF"}]},
+   {"type":"grid","w":40,"h":55,"cols":1,"count":3,"filled":3,"gap":8,"labels":"ABC",
+    "tile":{"type":"text","text":"Gate {{label}}","size":11,"color":"#A1A1A8"},
+    "current":"best","current_tile":{"type":"text","text":"Gate {{label}}","size":11,"weight":"bold","color":"#FFFFFF"}},
    {"type":"column","w":70,"spacing":13,"pad":[3,0,0,0],"items":[
     {"type":"shape","shape":"rect","fw":"qa","h":8,"radius":4,"fill":"#48484A"},
     {"type":"shape","shape":"rect","fw":"qb","h":8,"radius":4,"fill":"#48484A"},
-    {"type":"shape","shape":"rect","fw":"qc","h":8,"radius":4,"fill":"#FFD23F"}]}]},
+    {"type":"shape","shape":"rect","fw":"qc","h":8,"radius":4,"fill":"#48484A"}]}]},
   {"type":"text","text":"Shortest queue: {{gate}}","size":12,"weight":"bold","color":"#FFD23F"}]},
  "center":{"type":"spacer"},
  "bottom":{"type":"spacer"},
  "compact_leading":{"type":"text","text":"Gate {{gate}}","size":14,"weight":"heavy","color":"#FFD23F"},
- "compact_trailing":{"type":"timer","field":"doors","mode":"down","size":14,"weight":"bold","mono":true,"color":"#FFD23F"},
+ "compact_trailing":{"type":"timer","field":"doors","mode":"down","size":14,"weight":"bold","color":"#FFD23F"},
  "minimal":{"type":"icon","name":"ticket","color":"#FFD23F"}},
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#FFF1CC","items":[
  {"type":"icon","name":"ticket","color":"#2B2110","size":"l"},
  {"type":"column","items":[
-  {"type":"text","text":"Doors · Gate {{gate}}","size":12,"weight":"bold","color":"#2B2110"},
-  {"type":"timer","field":"doors","mode":"down","size":24,"weight":"heavy","mono":true,"color":"#2B2110"}]}]},
+  {"type":"text","text":"Gate {{gate}}","size":12,"weight":"bold","color":"#2B2110"},
+  {"type":"timer","field":"doors","mode":"down","size":24,"weight":"heavy","color":"#2B2110"}]}]},
 "promoted":{"title":"Doors open · {{event}}","text":"Use Gate {{gate}} · Seat {{seat}}","chip":"Gate {{gate}}",
  "timer":{"type":"timer","field":"doors","mode":"down"}}},
-"state":{"title":"Indie Night","doors":"2026-11-18T19:00:00+05:30","gate":"C","seat":"F-14","event":"Indie Night · Arena","qa":0.92,"qb":0.58,"qc":0.2}}
+"state":{"title":"Indie Night","doors":"2026-11-18T19:00:00+05:30","gate":"C","seat":"F-14","event":"Indie Night · Arena","qa":0.92,"qb":0.58,"qc":0.2,"best":2}}

@@ -23,7 +23,7 @@
   {"type":"timer","field":"drops","mode":"down","size":22,"weight":"bold","mono":true,"color":"#30D158"}]},
  "center":{"type":"spacer"},
  "bottom":{"type":"column","spacing":12,"items":[
-  {"type":"chart","h":28,"kind":"bar","values":[28,25,22,19,16,13,10,7],"min":0,"color":"#1F7A3A","rest":"#3A3A3C","split":"gone","highlight":"at","highlight_color":"#FFFFFF","gap":4,"round":true},
+  {"type":"chart","h":28,"kind":"bar","values":[28,25,22,19,16,13,10,7],"min":0,"color":"#1F7A3A","rest":"#3A3A3C","split":"gone","highlight":"at","highlight_color":"#FFFFFF","gap":4},
   {"type":"row","items":[
    {"type":"text","runs":[{"text":"{{left}} left","color":"#FFFFFF","weight":"semibold"},{"text":" · wait or grab it","color":"#A1A1A8"}],"size":12},
    {"type":"spacer"},

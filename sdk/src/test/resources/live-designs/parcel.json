@@ -1,5 +1,5 @@
 {"name":"Parcel tracking","canvas":"Parcel.dc.html",
-"fields":[{"name":"note","kind":"text","max":32},{"name":"day","kind":"text","max":7},{"name":"stops","kind":"number"},{"name":"reached","kind":"number"},{"name":"share","kind":"number"}],
+"fields":[{"name":"note","kind":"text","max":32},{"name":"day","kind":"text","max":7},{"name":"stops","kind":"number"},{"name":"reached","kind":"number"},{"name":"cur","kind":"number"},{"name":"share","kind":"number"}],
 "layout":{
 "lock":{"type":"layer","h":160,"bg":"#8E8BFF","items":[
  {"type":"column","at":"top_leading","h":160,"pad":[20,22,20,22],"items":[
@@ -23,17 +23,16 @@
   {"type":"text","text":"stops away","size":11,"color":"#A1A1A8"}]},
  "center":{"type":"spacer"},
  "bottom":{"type":"column","spacing":8,"items":[
-  {"type":"layer","fw":1,"h":16,"items":[
+  {"type":"layer","fw":1,"h":20,"items":[
    {"type":"layer","fw":0.75,"h":2,"bg":"#3A3A3C","items":[
     {"type":"shape","shape":"rect","at":"leading","fw":"share","fill":"#8E8BFF"}]},
-   {"type":"grid","h":16,"cols":4,"count":4,"filled":"reached",
+   {"type":"grid","h":20,"cols":4,"count":4,"filled":"reached",
     "tile":{"type":"shape","shape":"circle","w":12,"h":12,"fill":"#8E8BFF"},
-    "empty":{"type":"shape","shape":"circle","w":10,"h":10,"fill":"#3A3A3C"}}]},
-  {"type":"row","spacing":0,"items":[
-   {"type":"text","text":"Ordered","fw":0.25,"size":11,"color":"#A1A1A8"},
-   {"type":"text","text":"Shipped","fw":0.25,"size":11,"color":"#A1A1A8"},
-   {"type":"text","text":"Nearby","fw":0.25,"size":11,"color":"#A1A1A8"},
-   {"type":"text","text":"Delivered","fw":0.25,"size":11,"color":"#A1A1A8"}]}]},
+    "empty":{"type":"shape","shape":"circle","w":10,"h":10,"fill":"#3A3A3C"},"current":"cur",
+    "current_tile":{"type":"shape","shape":"circle","w":20,"h":20,"fill":"#8E8BFF","stroke":"#FFFFFF","width":3}}]},
+  {"type":"grid","h":14,"cols":4,"count":4,"filled":4,"labels":["Ordered","Shipped","Nearby","Delivered"],"current":"cur",
+   "tile":{"type":"text","text":"{{label}}","size":11,"color":"#A1A1A8"},
+   "current_tile":{"type":"text","text":"{{label}}","size":11,"weight":"semibold","color":"#FFFFFF"}}]},
  "compact_leading":{"type":"icon","name":"package","color":"#8E8BFF"},
  "compact_trailing":{"type":"text","text":"{{day}}","size":14,"weight":"semibold","color":"#8E8BFF"},
  "minimal":{"type":"icon","name":"package","color":"#8E8BFF"}},
@@ -44,4 +43,4 @@
   {"type":"text","text":"{{stops}} stops","size":24,"weight":"heavy","mono":true,"color":"#000000"}]}]},
 "promoted":{"title":"{{title}}","text":"{{note}} · {{stops}} stops away","chip":"{{day}}",
  "progress":{"type":"progress","value":"share","points":[0,0.333,0.667,1],"tracker":"truck","color":"#8E8BFF"}}},
-"state":{"title":"Out for delivery","note":"Arriving today by 6 PM","day":"Today","stops":2,"reached":3,"share":0.667}}
+"state":{"title":"Out for delivery","note":"Arriving today by 6 PM","day":"Today","stops":2,"reached":3,"cur":2,"share":0.667}}

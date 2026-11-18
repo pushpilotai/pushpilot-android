@@ -10,7 +10,7 @@
  {"type":"text","text":"On chai and snacks while it lasts","size":13,"weight":"semibold","color":"#0C2A4D"},
  {"type":"spacer"},
  {"type":"row","align":"bottom","spacing":10,"items":[
-  {"type":"chart","kind":"bar","h":26,"values":"rain","min":0,"color":"#0C2A4D","rest":"#FFFFFF66","split":"left","gap":4,"round":true},
+  {"type":"chart","kind":"bar","h":26,"values":"rain","min":0,"color":"#0C2A4D","rest":"#FFFFFF66","split":"left","gap":4},
   {"type":"text","text":"till {{stops}}","size":13,"weight":"bold","color":"#000000"}]}]},
 "island":{
  "leading":{"type":"row","spacing":12,"items":[
@@ -21,7 +21,7 @@
  "trailing":{"type":"spacer"},
  "center":{"type":"spacer"},
  "bottom":{"type":"column","spacing":6,"items":[
-  {"type":"chart","kind":"bar","h":26,"values":"rain","min":0,"color":"#6CB4FF","rest":"#3A3A3C","split":"left","gap":4,"round":true},
+  {"type":"chart","kind":"bar","h":26,"values":"rain","min":0,"color":"#6CB4FF","rest":"#3A3A3C","split":"left","gap":4},
   {"type":"row","items":[
    {"type":"text","text":"Now","size":12,"color":"#A1A1A8"},
    {"type":"spacer"},
@@ -32,7 +32,8 @@
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#6CB4FF","items":[
  {"type":"icon","name":"rain","size":"l","color":"#0C2A4D"},
  {"type":"column","items":[
-  {"type":"text","text":"Raining in {{area}}","size":12,"weight":"bold","color":"#0C2A4D","lines":1},
-  {"type":"text","text":"Free delivery","size":20,"weight":"heavy","color":"#000000"}]}]},
-"promoted":{"title":"Free delivery while it rains","text":"Raining in {{area}} · likely stops around {{stops}}","chip":"Free","progress":{"type":"progress","value":"left","color":"#6CB4FF"}}},
+  {"type":"text","text":"Raining now","size":12,"weight":"bold","color":"#0C2A4D"},
+  {"type":"text","text":"Free delivery","size":17,"weight":"heavy","color":"#000000"}]}]},
+"promoted":{"title":"Free delivery while it rains","text":"Raining in {{area}} · likely stops around {{stops}}","chip":"Free",
+ "progress":{"type":"progress","value":"left","color":"#6CB4FF"}}},
 "state":{"title":"While it rains","area":"Indiranagar","stops":"2026-11-18T17:40:00+05:30","rain":[24,26,22,19,16,13,10,7,4,4,4,4],"left":0.667}}

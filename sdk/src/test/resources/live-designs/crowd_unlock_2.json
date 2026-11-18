@@ -14,12 +14,8 @@
  {"type":"spacer"},
  {"type":"layer","h":14,"radius":7,"bg":"#3D78D6","items":[
   {"type":"shape","shape":"rect","at":"leading","fw":"share","h":14,"radius":7,"fill":"#FFFFFF"},
-  {"type":"row","spacing":0,"items":[
-   {"type":"spacer"},
-   {"type":"shape","shape":"circle","w":8,"h":8,"fill":"#0A4FB8"},
-   {"type":"spacer"},
-   {"type":"shape","shape":"circle","w":8,"h":8,"fill":"#0A4FB8"},
-   {"type":"spacer"}]}]}]},
+  {"type":"shape","shape":"circle","w":8,"h":8,"fill":"#0A4FB8","pos":[0.345,0.5]},
+  {"type":"shape","shape":"circle","w":8,"h":8,"fill":"#0A4FB8","pos":[0.675,0.5]}]}]},
 "island":{
  "leading":{"type":"layer","w":100,"h":100,"items":[
   {"type":"arc","value":"share","width":11,"color":"#64D2FF","track":"#2C2C2E"},
@@ -40,5 +36,7 @@
  {"type":"column","items":[
   {"type":"text","text":"{{to_go}} to go","size":12,"weight":"bold","color":"#D6E6FF"},
   {"type":"text","text":"{{off}}% off","size":24,"weight":"heavy","color":"#FFFFFF"}]}]},
-"promoted":{"title":"{{to_go}} more and everyone gets {{off}}% off","text":"{{joined}} joined · {{pct}}% of the goal","chip":"{{pct}}%","progress":{"type":"progress","value":"share","points":[0.33,0.66],"color":"#0A4FB8"},"timer":{"type":"timer","field":"ends","mode":"down"}}},
+"promoted":{"title":"{{to_go}} more and everyone gets {{off}}% off","text":"{{joined}} joined · {{pct}}% of the goal","chip":"{{pct}}%",
+ "progress":{"type":"progress","value":"share","points":[0.33,0.66],"color":"#0A4FB8"},
+ "timer":{"type":"timer","field":"ends","mode":"down"}}},
 "state":{"title":"Crowd unlock","joined":"2,340","to_go":"660","off":50,"pct":78,"share":0.78,"ends":"2026-11-18T19:18:20+05:30"}}

@@ -15,7 +15,7 @@
 "flake":{"type":"path","d":"M12 2V22M3.3 7L20.7 17M3.3 17L20.7 7","view":[24,24],"stroke":"#9CC8FF","width":2}},
 "lock":{"type":"layer","h":160,"bg":"#0E1B33","items":[
  {"type":"use","ref":"scene"},
- {"type":"column","at":"top_leading","pad":[20,22,20,22],"spacing":4,"align":"leading","items":[
+ {"type":"column","at":"top_leading","pad":[16,22,16,22],"spacing":2,"align":"leading","items":[
   {"type":"text","text":"{{inches}} INCHES AND COUNTING","size":11,"weight":"heavy","tracking":0.06,"color":"#9CC8FF"},
   {"type":"text","text":"{{off}} off","size":58,"weight":"heavy","tracking":-0.04,"color":"#FFFFFF"},
   {"type":"text","text":"Hot cocoa · {{rate}} off per inch","size":13,"weight":"semibold","color":"#D6E6FF"}]}]},

@@ -7,12 +7,14 @@
   {"type":"text","text":"BACK IN STOCK IN YOUR SIZE","size":11,"weight":"heavy","tracking":0.06,"color":"#000000"}]},
  {"type":"spacer"},
  {"type":"row","align":"baseline","spacing":8,"items":[
-  {"type":"text","text":"{{left}}","size":60,"weight":"heavy","tracking":-0.04,"mono":true,"color":"#000000"},
+  {"type":"text","text":"{{left}}","size":54,"weight":"heavy","tracking":-0.04,"mono":true,"color":"#000000"},
   {"type":"text","text":"left","size":24,"weight":"heavy","color":"#000000"},
   {"type":"spacer"},
   {"type":"text","text":"{{size}} · {{price}}","size":14,"weight":"bold","color":"#000000"}]},
  {"type":"spacer"},
- {"type":"grid","h":12,"cols":20,"count":20,"filled":"left","from":"end","gap":4,"tile":{"type":"shape","shape":"rect","radius":3,"fill":"#000000"},"empty":{"type":"shape","shape":"rect","radius":3,"fill":"#E0503F"}},
+ {"type":"grid","h":12,"cols":20,"count":20,"filled":"left","from":"end","gap":4,
+  "tile":{"type":"shape","shape":"rect","radius":3,"fill":"#000000"},
+  "empty":{"type":"shape","shape":"rect","radius":3,"fill":"#E0503F"}},
  {"type":"text","text":"{{gone}} of {{total}} gone in {{mins}} minutes · {{looking}} looking now","pad":[8,0,0,0],"size":12,"weight":"bold","color":"#000000","lines":1}]},
 "island":{
  "leading":{"type":"row","spacing":12,"items":[
@@ -25,7 +27,9 @@
   {"type":"text","text":"left","size":11,"color":"#A1A1A8"}]},
  "center":{"type":"spacer"},
  "bottom":{"type":"column","spacing":8,"items":[
-  {"type":"grid","h":12,"cols":20,"count":20,"filled":"left","from":"end","gap":4,"tile":{"type":"shape","shape":"rect","radius":3,"fill":"#FF6B5E"},"empty":{"type":"shape","shape":"rect","radius":3,"fill":"#3A3A3C"}},
+  {"type":"grid","h":12,"cols":20,"count":20,"filled":"left","from":"end","gap":4,
+   "tile":{"type":"shape","shape":"rect","radius":3,"fill":"#FF6B5E"},
+   "empty":{"type":"shape","shape":"rect","radius":3,"fill":"#3A3A3C"}},
   {"type":"row","items":[
    {"type":"text","runs":[{"text":"{{gone}} of {{total}}","color":"#FFFFFF","weight":"semibold"},{"text":" gone in {{mins}} minutes"}],"size":12,"color":"#A1A1A8"},
    {"type":"spacer"},
@@ -36,7 +40,8 @@
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#FF6B5E","items":[
  {"type":"icon","name":"heart","size":"l","color":"#000000"},
  {"type":"column","items":[
-  {"type":"text","text":"Back in stock · {{size}}","size":12,"weight":"bold","color":"#000000","lines":1},
+  {"type":"text","text":"Back in stock","size":12,"weight":"bold","color":"#000000","lines":1},
   {"type":"text","text":"{{left}} left","size":24,"weight":"heavy","mono":true,"color":"#000000"}]}]},
-"promoted":{"title":"{{left}} left in your size","text":"{{size}} · {{price}} · {{gone}} of {{total}} gone in {{mins}} min","chip":"{{left}} left","progress":{"type":"progress","value":"share","color":"#FF6B5E"}}},
+"promoted":{"title":"{{left}} left in your size","text":"{{size}} · {{price}} · {{gone}} of {{total}} gone in {{mins}} min","chip":"{{left}} left",
+ "progress":{"type":"progress","value":"share","color":"#FF6B5E"}}},
 "state":{"title":"Back in stock","left":12,"total":20,"share":0.6,"size":"UK 9","price":"₹3,299","gone":8,"mins":5,"looking":38}}

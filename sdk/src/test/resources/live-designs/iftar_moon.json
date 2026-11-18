@@ -1,12 +1,15 @@
 {"name":"Iftar countdown","canvas":"IftarMoon.dc.html",
 "fields":[{"name":"iftar","kind":"time"},{"name":"arrives","kind":"time"}],
 "layout":{
+"defs":{
+"moon":{"type":"layer","w":96,"h":96,"items":[
+ {"type":"shape","shape":"circle","at":"top_leading","offset":[6,10],"w":80,"h":80,"fill":"#F6D77A"},
+ {"type":"shape","shape":"circle","at":"top_leading","offset":[27,5],"w":70,"h":70,"fill":"$c"},
+ {"type":"path","d":"M70 22 73.5 32.5 84 36 73.5 39.5 70 50 66.5 39.5 56 36 66.5 32.5Z","view":[96,96],"fill":"#F6D77A"}]}},
 "lock":{"type":"layer","h":160,"bg":"#0C3B3A","items":[
  {"type":"layer","at":"top_trailing","w":150,"h":160,"items":[
   {"type":"path","d":"M22 24h.1M60 140h.1M10 96h.1M136 146h.1","view":[150,160],"stroke":"#7FB5AE","width":3},
-  {"type":"shape","shape":"circle","at":"top_leading","offset":[30,12],"w":124,"h":124,"fill":"#F6D77A"},
-  {"type":"shape","shape":"circle","at":"top_leading","offset":[61,3],"w":110,"h":110,"fill":"#0C3B3A"},
-  {"type":"path","d":"M118 34 122.5 47.5 136 52 122.5 56.5 118 70 113.5 56.5 100 52 113.5 47.5Z","view":[150,160],"fill":"#F6D77A"}]},
+  {"type":"use","ref":"moon","at":"top_leading","offset":[15,-4],"w":149,"h":149,"colors":{"c":"#0C3B3A"}}]},
  {"type":"column","at":"top_leading","h":160,"pad":[20,22,20,22],"items":[
   {"type":"text","text":"IFTAR IN","size":11,"weight":"bold","tracking":0.08,"color":"#F6D77A"},
   {"type":"spacer"},
@@ -14,10 +17,7 @@
   {"type":"spacer"},
   {"type":"text","text":"Dinner arrives {{arrives}}, at sunset","size":13,"weight":"semibold","color":"#CFE9E4","lines":1}]}]},
 "island":{
- "leading":{"type":"layer","w":96,"h":96,"items":[
-  {"type":"shape","shape":"circle","at":"top_leading","offset":[6,10],"w":80,"h":80,"fill":"#F6D77A"},
-  {"type":"shape","shape":"circle","at":"top_leading","offset":[27,5],"w":70,"h":70,"fill":"#000000"},
-  {"type":"path","d":"M70 22 73.5 32.5 84 36 73.5 39.5 70 50 66.5 39.5 56 36 66.5 32.5Z","view":[96,96],"fill":"#F6D77A"}]},
+ "leading":{"type":"use","ref":"moon","w":96,"h":96,"colors":{"c":"#000000"}},
  "trailing":{"type":"column","spacing":5,"items":[
   {"type":"text","text":"IFTAR IN","size":11,"weight":"bold","tracking":0.08,"color":"#F6D77A"},
   {"type":"timer","field":"iftar","mode":"down","size":40,"weight":"heavy","tracking":-0.03,"mono":true,"color":"#FFFFFF"},
@@ -28,7 +28,7 @@
  "compact_trailing":{"type":"timer","field":"iftar","mode":"down","size":14,"weight":"bold","mono":true,"color":"#F6D77A"},
  "minimal":{"type":"icon","name":"moon","color":"#F6D77A"}},
 "small":{"type":"row","spacing":8,"pad":10,"bg":"#0C3B3A","items":[
- {"type":"icon","name":"moon","color":"#F6D77A","size":"l"},
+ {"type":"use","ref":"moon","w":44,"h":44,"colors":{"c":"#0C3B3A"}},
  {"type":"column","items":[
   {"type":"text","text":"Iftar in","size":12,"weight":"bold","color":"#F6D77A"},
   {"type":"timer","field":"iftar","mode":"down","size":24,"weight":"heavy","mono":true,"color":"#FFFFFF"}]}]},
