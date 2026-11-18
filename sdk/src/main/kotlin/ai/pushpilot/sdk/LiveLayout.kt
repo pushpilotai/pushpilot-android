@@ -224,7 +224,8 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
         val h = finite(ah)
         if (copies == null) {
             if (fills) return Size(w, h) to listOf(node(def, w, h, w, h, depth + 1))
-            val n = node(def, INF, INF, INF, INF, depth + 1)
+            // The use's box is the def's parent, so a def's `fw`/`fh` is a share of it (a booth `fh: 1` beside a lane).
+            val n = node(def, INF, INF, aw, ah, depth + 1)
             if (!sized || n.w <= 0f || n.h <= 0f) return Size(n.w, n.h) to listOf(n)
             n.scale = minOf(w / n.w, h / n.h)
             n.x = (w - n.w * n.scale) / 2

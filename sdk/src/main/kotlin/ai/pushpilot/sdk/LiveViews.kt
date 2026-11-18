@@ -82,6 +82,8 @@ internal class LiveViews(
         b.optString("type") in PAINTED_TYPES -> true
         PAINTED_KEYS.any { b.has(it) } -> true
         (b.has("w") || b.has("h")) && Build.VERSION.SDK_INT < 31 -> true
+        // The icon layouts come in three sizes; a size in points is painted.
+        b.optString("type") == "icon" && b.opt("size") is Number -> true
         else -> false
     }
 

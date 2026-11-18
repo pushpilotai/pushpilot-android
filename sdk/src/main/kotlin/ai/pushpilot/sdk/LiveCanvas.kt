@@ -28,7 +28,7 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
     /** The natural size of the blocks measured by fonts or fixed artwork. */
     override fun measure(block: JSONObject, maxWidth: Float): Size = when (block.optString("type")) {
         "text", "timer", "badge", "pairs" -> text.measure(block, maxWidth)
-        "icon" -> iconSize(block.optString("size")).let { Size(it, it) }
+        "icon" -> iconSize(block.opt("size")).let { Size(it, it) }
         "image" -> imageSize(block.optString("size")).let { Size(it, it) }
         "progress" -> Size(0f, if (block.optString("tracker").isNotEmpty()) 18f else 8f)
         else -> Size(0f, 0f)
@@ -103,7 +103,7 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
                 val across = when (b.optString("align")) { "leading" -> 0f; "trailing" -> 1f; else -> 0.5f }
                 text.draw(c, b, x + (w - n.contentW) * across, y + (h - n.contentH) / 2, n.contentW, n.contentH)
             }
-            "icon" -> icon(c, b.optString("asset"), b.optString("name"), text.color(b.optString("color")), x, y, w, h, iconSize(b.optString("size")))
+            "icon" -> icon(c, b.optString("asset"), b.optString("name"), text.color(b.optString("color")), x, y, w, h, iconSize(b.opt("size")))
             "image" -> image(c, b, x, y, w, h)
             "progress" -> progress(c, b, x, y, w, h)
             "shape" -> shape(c, b, RectF(x, y, x + w, y + h))
@@ -281,7 +281,7 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
         when {
             bitmap != null -> c.drawBitmap(bitmap, null, dest, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
             views.drawable(b.optString("asset")) != null -> icon(c, b.optString("asset"), "", null, x, y, w, h, size)
-            else -> icon(c, "", b.optString("fallback"), text.primary, x, y, w, h, iconSize(b.optString("size")))
+            else -> icon(c, "", b.optString("fallback"), text.primary, x, y, w, h, iconSize(b.opt("size")))
         }
     }
 
@@ -299,8 +299,8 @@ internal class LiveCanvas(private val context: Context, private val live: LiveUp
     }
 
     companion object {
-        /** An icon's side in dp for its `size`. */
-        fun iconSize(size: String) = when (size) { "s" -> 16f; "l" -> 32f; else -> 24f }
+        /** An icon's side in dp for its `size`: `s`, `m`, `l`, or a number of points from 8 to 120. */
+        fun iconSize(size: Any?) = when (size) { is Number -> size.toFloat().coerceIn(8f, 120f); "s" -> 16f; "l" -> 32f; else -> 24f }
 
         /** An image's side in dp for its `size`. */
         fun imageSize(size: String) = when (size) { "s" -> 24f; "l" -> 64f; else -> 40f }
