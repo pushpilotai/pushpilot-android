@@ -12,7 +12,7 @@
 "ghost":{"type":"path","d":"M2 38L12 16 22 38Z","view":[24,48],"stroke":"#1F7A45","width":2,"dash":[3,4]}},
 "lock":{"type":"layer","h":160,"bg":"#E4F4E6","items":[
  {"type":"use","ref":"back"},
- {"type":"grid","at":"top_leading","offset":[156,66],"w":242,"h":50,"rotate":-6,"cols":10,"count":10,"filled":"planted",
+ {"type":"grid","at":"top_leading","offset":[156,66],"w":220,"h":50,"rotate":-6,"cols":10,"count":10,"filled":"planted",
   "tile":{"type":"use","ref":"tree","w":20,"h":40},"empty":{"type":"use","ref":"ghost","w":20,"h":40}},
  {"type":"use","ref":"front"},
  {"type":"column","at":"top_leading","pad":[20,22,20,22],"spacing":3,"align":"leading","items":[
