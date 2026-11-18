@@ -15,12 +15,32 @@ internal object LiveResolve {
     /** The block types that take an enclosing `view` when they have none. */
     private val VIEW_TAKERS = setOf("path", "use")
 
-    /** A def ready to draw for one `use`: its `$name` colours from [colors] (`primary` when unset) and its `view` passed down. */
+    /**
+     * A def ready to draw for one `use`: its `$name` colours from [colors] (`primary` when unset)
+     * and its `view` passed down. A `use` inside it keeps these colours, with its own `colors` laid
+     * over them (a `$x` there is this def's `x`).
+     */
     fun def(def: JSONObject, colors: JSONObject?): JSONObject {
         val coloured = copy(def, false) { s, colour ->
             if (colour && s.length > 1 && s[0] == '$' && name(s.substring(1))) colors?.optString(s.substring(1))?.takeIf { it.isNotEmpty() } ?: "primary" else s
         } as JSONObject
+        if (colors != null) passColours(coloured, colors)
         return views(coloured, null, root = true) as JSONObject
+    }
+
+    /** Gives every `use` in [json] the enclosing [colors] under its own (already resolved) `colors`. */
+    private fun passColours(json: Any?, colors: JSONObject) {
+        when (json) {
+            is JSONObject -> {
+                if (json.optString("type") == "use") {
+                    val merged = JSONObject(colors.toString())
+                    json.optJSONObject("colors")?.let { own -> for (k in own.keys()) merged.put(k, own.get(k)) }
+                    json.put("colors", merged)
+                }
+                for (key in json.keys()) passColours(json.get(key), colors)
+            }
+            is JSONArray -> for (i in 0 until json.length()) passColours(json.get(i), colors)
+        }
     }
 
     /** A block tree in which every `path` and `use` without a `view` takes the nearest enclosing layer's `view` (and a def's, at its [root]). */
