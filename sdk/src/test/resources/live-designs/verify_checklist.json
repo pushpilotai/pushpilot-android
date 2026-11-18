@@ -10,7 +10,7 @@
   {"type":"spacer"},
   {"type":"text","text":"{{s3}} · about {{eta}}","size":12,"weight":"semibold","color":"#D6E6FF"}]},
  {"type":"spacer"},
- {"type":"grid","w":136,"h":114,"cols":1,"count":3,"gap":6,"filled":"done_n","current":"done_n","labels":["{{s1}}","{{s2}}","{{s3}}"],
+ {"type":"grid","w":152,"h":114,"cols":1,"count":3,"gap":6,"filled":"done_n","current":"done_n","labels":["{{s1}}","{{s2}}","{{s3}}"],
   "tile":{"type":"row","pad":[0,10,0,10],"radius":10,"bg":"#143C7D","spacing":8,"items":[
    {"type":"use","ref":"tick","w":20,"h":20,"colors":{"on":"#4AE37A","ink":"#0A2A5C"}},
    {"type":"text","text":"{{label}}","size":13,"weight":"bold","color":"#FFFFFF"},
