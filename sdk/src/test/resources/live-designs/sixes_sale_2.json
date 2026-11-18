@@ -1,4 +1,4 @@
-{"name":"Every six cuts the price","canvas":"SixesSale2.dc.html",
+{"name":"Every six cuts the price, v2","canvas":"SixesSale2.dc.html",
 "fields":[{"name":"team","kind":"text","max":12},{"name":"code","kind":"text","max":4},{"name":"sixes","kind":"number"},{"name":"off","kind":"number"},{"name":"next","kind":"number"},{"name":"share","kind":"number"}],
 "layout":{
 "lock":{"type":"layer","h":160,"bg":"#FFD60A","items":[

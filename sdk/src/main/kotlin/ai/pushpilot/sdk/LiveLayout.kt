@@ -44,7 +44,8 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
     private val defs = live.layout.optJSONObject("defs")
 
     /** Lays out [block] in a box at most [width] by [height]; [card] makes it exactly [width] wide, as the Lock Screen card is. */
-    fun layout(block: JSONObject, width: Float, height: Float, card: Boolean = false): Node = node(block, width, height, width, height, 0, exactW = card)
+    fun layout(block: JSONObject, width: Float, height: Float, card: Boolean = false): Node =
+        node(LiveResolve.views(block, null) as JSONObject, width, height, width, height, 0, exactW = card)
 
     /** The shared drawing named [ref], or null. */
     fun def(ref: String): JSONObject? = defs?.optJSONObject(ref)
@@ -78,10 +79,10 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
     private fun defFills(b: JSONObject, depth: Int): Boolean =
         b.has("copies") || def(b.optString("ref"))?.let { fillsW(it, depth + 1) || fillsH(it, depth + 1) } == true
 
-    /** A box's items of known types; unknown types draw nothing. */
+    /** A box's items of known types that `show` lets through; the others draw nothing and take no space. */
     fun items(b: JSONObject): List<JSONObject> {
         val a = b.optJSONArray("items") ?: return emptyList()
-        return (0 until a.length()).mapNotNull { a.optJSONObject(it) }.filter { it.optString("type") in TYPES }
+        return (0 until a.length()).mapNotNull { a.optJSONObject(it) }.filter { it.optString("type") in TYPES && LiveBox.shown(it, live) }
     }
 
     /** A path's outlines in a box of [w] by [h], after `view` and `fit`; null when `d` cannot be read. */
@@ -94,7 +95,8 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
 
     /** Lays out one block offered [pw] by [ph], inside a parent whose content is [cw] by [ch]; [exact] forces the offered size, [exactW] its width. */
     private fun node(b: JSONObject, pw: Float, ph: Float, cw: Float, ch: Float, depth: Int, exact: Boolean = false, exactW: Boolean = false): Node {
-        if (depth > MAX_DEPTH) return Node(b, 0f, 0f, emptyList(), null, 0f, 0f, false)
+        // A hidden block becomes an empty one: no size, nothing drawn.
+        if (depth > MAX_DEPTH || !LiveBox.shown(b, live)) return Node(JSONObject(), 0f, 0f, emptyList(), null, 0f, 0f, false)
         val pad = LiveBox.pad(b)
         val padX = pad[1] + pad[3]
         val padY = pad[0] + pad[2]
@@ -190,7 +192,7 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
         return (if (row) Size(mainSize, crossOut, baseline) else Size(crossOut, mainSize, baseline)) to all
     }
 
-    /** Items drawn on top of each other, each placed by its `at`; the layer is its fixed size or its largest item. */
+    /** Items drawn on top of each other, each placed by its `at`, or with its centre at its `pos`; the layer is its fixed size or its largest item. */
     private fun layer(b: JSONObject, aw: Float, ah: Float, fixedW: Boolean, fixedH: Boolean, depth: Int): Pair<Size, List<Node>> {
         val items = items(b)
         val first = items.map { node(it, aw, ah, aw, ah, depth + 1) }
@@ -202,7 +204,8 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
             if (again && (fillsW(item, depth + 1) || fillsH(item, depth + 1) || item.has("fw") || item.has("fh"))) node(item, w, h, w, h, depth + 1) else first[i]
         }
         for (n in nodes) {
-            val p = LiveBox.place(n.block.optString("at").ifEmpty { "center" }, n.w, n.h, w, h)
+            val pos = LiveBox.pos(n.block, live)
+            val p = if (pos != null) Pt(pos.x * w - n.w / 2, pos.y * h - n.h / 2) else LiveBox.place(n.block.optString("at").ifEmpty { "center" }, n.w, n.h, w, h)
             n.x = p.x
             n.y = p.y
         }
@@ -214,7 +217,7 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
      * copy, the `view` box scaled evenly to fit and each copy at its point (LiveGeometry.copy).
      */
     private fun use(b: JSONObject, aw: Float, ah: Float, sized: Boolean, depth: Int): Pair<Size, List<Node>> {
-        val def = def(b.optString("ref")) ?: return Size(0f, 0f) to emptyList()
+        val def = def(b.optString("ref"))?.let { LiveResolve.def(it, b.optJSONObject("colors")) } ?: return Size(0f, 0f) to emptyList()
         val fills = fillsW(def, depth + 1) || fillsH(def, depth + 1)
         val copies = b.optJSONArray("copies")
         val w = finite(aw)
@@ -242,17 +245,27 @@ internal class LiveLayout(private val live: LiveUpdate, private val sizer: LiveS
         return Size(w, h) to nodes
     }
 
-    /** A grid: cells share the width (and the height when it is fixed); each holds the `tile` or the `empty` block, filling its cell on any axis it is not sized on. */
+    /**
+     * A grid: cells share the width (and the height when it is fixed); each holds the `tile`, the
+     * `empty` block or, at `current`, the `current_tile`, with its `labels` entry as `{{label}}`,
+     * filling its cell on any axis it is not sized on. `filled` is a count, or a numbers field
+     * whose non-zero entries mark the filled cells.
+     */
     private fun grid(b: JSONObject, aw: Float, ah: Float, fixedH: Boolean, depth: Int): Pair<Size, List<Node>> {
         val cols = b.optInt("cols", 1).coerceIn(1, 24)
         val count = b.optInt("count", 1).coerceIn(1, 96)
         val gap = b.optDouble("gap", 0.0).toFloat()
         val w = if (aw.isFinite()) aw else cols * DEFAULT_CELL + gap * (cols - 1)
+        val mask = (b.opt("filled") as? String)?.let { live.values.optJSONArray(it) }
         val filled = floor((LiveBox.count(b.opt("filled"), live) ?: 0.0) + 1e-6).toInt()
         val cells = LiveGeometry.gridCells(w, if (fixedH) ah else null, cols, count, filled, b.optString("from") == "end", gap)
-        val nodes = cells.mapNotNull { cell ->
-            val block = b.optJSONObject(if (cell.filled) "tile" else "empty") ?: return@mapNotNull null
-            val sized = JSONObject(block.toString())
+        val labels = LiveResolve.labels(b.opt("labels"), cells.size) { live.fill(it) }
+        val current = LiveBox.count(b.opt("current"), live)?.let { floor(it + 1e-6).toInt() }
+        val nodes = cells.mapIndexedNotNull { i, cell ->
+            val on = if (mask != null) mask.optDouble(i, 0.0).let { it != 0.0 && !it.isNaN() } else cell.filled
+            val key = if (i == current && b.has("current_tile")) "current_tile" else if (on) "tile" else "empty"
+            val block = b.optJSONObject(key) ?: return@mapIndexedNotNull null
+            val sized = LiveResolve.labelled(block, labels[i])
             if (!sized.has("w") && !sized.has("fw")) sized.put("w", cell.w.toDouble())
             if (!sized.has("h") && !sized.has("fh")) sized.put("h", cell.h.toDouble())
             val n = node(sized, cell.w, cell.h, cell.w, cell.h, depth + 1)

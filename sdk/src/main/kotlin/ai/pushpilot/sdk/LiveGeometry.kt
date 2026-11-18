@@ -97,13 +97,13 @@ internal object LiveGeometry {
         }
     }
 
-    /** The bars of a bar chart in a box of [w] by [h], [gap] apart, each rising from the range's bottom. */
-    fun chartBars(values: List<Double>, lo: Double, hi: Double, w: Float, h: Float, gap: Float): List<Rect4> {
+    /** The bars of a bar chart in a box of [w] by [h], [gap] apart, each rising from the range's bottom, or growing both ways from the middle line when [center] (`base: center`). */
+    fun chartBars(values: List<Double>, lo: Double, hi: Double, w: Float, h: Float, gap: Float, center: Boolean = false): List<Rect4> {
         val n = values.size.coerceAtLeast(1)
         val bw = ((w - gap * (n - 1)) / n).coerceAtLeast(0f)
         return values.mapIndexed { i, v ->
-            val top = (h - (v.coerceIn(lo, hi) - lo) / (hi - lo) * h).toFloat()
-            Rect4(i * (bw + gap), top, bw, h - top)
+            val tall = ((v.coerceIn(lo, hi) - lo) / (hi - lo) * h).toFloat()
+            Rect4(i * (bw + gap), if (center) (h - tall) / 2 else h - tall, bw, tall)
         }
     }
 }

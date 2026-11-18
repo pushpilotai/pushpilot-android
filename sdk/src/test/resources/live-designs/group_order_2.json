@@ -1,4 +1,4 @@
-{"name":"Group order","canvas":"GroupOrder2.dc.html",
+{"name":"Group order, v2","canvas":"GroupOrder2.dc.html",
 "fields":[{"name":"closes","kind":"time"},{"name":"joined","kind":"number"},{"name":"size","kind":"number"},{"name":"share","kind":"number"}],
 "layout":{
 "defs":{

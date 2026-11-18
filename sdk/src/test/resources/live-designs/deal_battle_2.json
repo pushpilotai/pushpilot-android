@@ -1,4 +1,4 @@
-{"name":"Deal battle","canvas":"DealBattle2.dc.html",
+{"name":"Deal battle, v2","canvas":"DealBattle2.dc.html",
 "fields":[{"name":"a_name","kind":"text","max":10},{"name":"b_name","kind":"text","max":10},{"name":"a_pct","kind":"number"},{"name":"b_pct","kind":"number"},{"name":"share","kind":"number"},{"name":"closes","kind":"time"}],
 "layout":{
 "lock":{"type":"layer","h":160,"bg":"#0A4FB8","items":[

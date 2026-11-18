@@ -44,11 +44,10 @@ internal class LiveText(private val live: LiveUpdate, private val dark: Boolean,
         return (0 until runs.length()).mapNotNull { runs.optJSONObject(it) }.map { content(JSONObject().put("text", it.optString("text")).put("upper", block.optBoolean("upper"))) to it }
     }
 
-    /** What a timer shows now: the time left (`down`) or since (`up`), as `m:ss` or `h:mm:ss`. Null without its field. */
+    /** What a timer shows now: the time left (`down`) or since (`up`) in its `format` (LiveBox.timerText). Null without its field. */
     fun timer(block: JSONObject): String? {
         val at = live.time(block.optString("field")) ?: return null
-        val s = maxOf(0L, if (block.optString("mode") == "up") nowMs / 1000 - at else at - nowMs / 1000)
-        return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%02d:%02d".format(s / 60, s % 60)
+        return LiveBox.timerText(if (block.optString("mode") == "up") nowMs / 1000 - at else at - nowMs / 1000, block.optString("format"))
     }
 
     /** The weight from 100 to 900: the run's, else the block's, else bold for the `title` and `number` styles. */

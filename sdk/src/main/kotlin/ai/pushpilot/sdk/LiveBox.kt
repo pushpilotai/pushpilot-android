@@ -60,13 +60,68 @@ internal object LiveBox {
     }
 
     /** `rotate` in degrees: a constant, or `from` plus the value's share of the way to `to`. */
-    fun rotation(block: JSONObject, live: LiveUpdate): Float = when (val r = block.opt("rotate")) {
-        is Number -> r.toFloat()
+    fun rotation(block: JSONObject, live: LiveUpdate): Float = angle(block.opt("rotate"), live)
+
+    /** An angle in degrees (`rotate`, arc `start`): a number, or `{value, from, to}` turning with an amount; [default] when absent. */
+    fun angle(value: Any?, live: LiveUpdate, default: Float = 0f): Float = when (value) {
+        is Number -> value.toFloat()
         is JSONObject -> {
-            val from = r.optDouble("from", 0.0)
-            (from + (r.optDouble("to", 0.0) - from) * amount(r.opt("value"), live, 0.0)).toFloat()
+            val from = value.optDouble("from", 0.0)
+            (from + (value.optDouble("to", 0.0) - from) * amount(value.opt("value"), live, 0.0)).toFloat()
         }
-        else -> 0f
+        else -> default
+    }
+
+    /**
+     * True when the block's `show` (`{field, is?, above?, below?}`) holds for the state, or it has
+     * none. `is` matches text or numbers; `above` and `below` compare numbers (times in Unix seconds).
+     * With only `field`, the value must be present and not empty, 0 or false.
+     */
+    fun shown(block: JSONObject, live: LiveUpdate): Boolean {
+        val show = block.optJSONObject("show") ?: return true
+        val v = live.values.opt(show.optString("field")).takeIf { it != null && it != JSONObject.NULL }
+        val n = (v as? Number)?.toDouble()
+        if (!show.has("is") && !show.has("above") && !show.has("below")) {
+            return when (v) {
+                null -> false
+                is Boolean -> v
+                is Number -> v.toDouble() != 0.0
+                is JSONArray -> v.length() > 0
+                else -> v.toString().isNotEmpty()
+            }
+        }
+        if (show.has("is")) {
+            val want = show.opt("is")
+            val same = if (want is Number && n != null) want.toDouble() == n else v != null && text(v) == text(want)
+            if (!same) return false
+        }
+        (show.opt("above") as? Number)?.let { if (n == null || n <= it.toDouble()) return false }
+        (show.opt("below") as? Number)?.let { if (n == null || n >= it.toDouble()) return false }
+        return true
+    }
+
+    /** A state value as text for `is`: numbers as written (no `.0` on whole ones). */
+    private fun text(v: Any?): String = if (v is Number) LiveUpdate.numberText(v.toDouble()) else v.toString()
+
+    /**
+     * What a timer shows for [seconds] in its `format`: `clock` (`05:12`, `2:10:00`), `minutes`
+     * (`25 min`), `hours` (`2h 14m`), `days` (`1d 22h`) or `seconds` (`42 sec`); whole units, rounded down.
+     */
+    fun timerText(seconds: Long, format: String): String {
+        val s = seconds.coerceAtLeast(0L)
+        return when (format) {
+            "minutes" -> "${s / 60} min"
+            "hours" -> "${s / 3600}h ${s / 60 % 60}m"
+            "days" -> "${s / 86400}d ${s / 3600 % 24}h"
+            "seconds" -> "$s sec"
+            else -> if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%02d:%02d".format(s / 60, s % 60)
+        }
+    }
+
+    /** `pos` as two amounts (fractions of a layer's width and height), or null when absent. */
+    fun pos(block: JSONObject, live: LiveUpdate): Pt? {
+        val a = block.optJSONArray("pos") ?: return null
+        return Pt(amount(a.opt(0), live, 0.5).toFloat(), amount(a.opt(1), live, 0.5).toFloat())
     }
 
     /** `opacity` from 0 to 1. */

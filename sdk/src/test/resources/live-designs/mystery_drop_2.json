@@ -1,0 +1,46 @@
+{"name":"Mystery drop, v2","canvas":"MysteryDrop2.dc.html",
+"fields":[{"name":"l1","kind":"text","max":1},{"name":"l2","kind":"text","max":1},{"name":"l3","kind":"text","max":1},{"name":"l4","kind":"text","max":1},{"name":"l5","kind":"text","max":1},{"name":"l6","kind":"text","max":1},{"name":"l7","kind":"text","max":1},{"name":"l8","kind":"text","max":1},{"name":"mask","kind":"numbers","max":8},{"name":"clue_n","kind":"number"},{"name":"clues","kind":"number"},{"name":"clue","kind":"text","max":24},{"name":"reveal","kind":"time"}],
+"layout":{
+"defs":{
+"tiles":{"type":"layer","h":58,"items":[
+ {"type":"grid","h":58,"cols":8,"count":8,"filled":8,"gap":6,"tile":{"type":"text","text":"?","size":22,"weight":"bold","color":"#E2BBFF","bg":"#48216F","radius":10}},
+ {"type":"chart","kind":"bar","h":58,"values":"mask","min":0,"max":1,"color":"#FFFFFF","gap":6,"round":true},
+ {"type":"row","spacing":6,"items":[
+  {"type":"text","text":"{{l1}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l2}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l3}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l4}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l5}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l6}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l7}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"},
+  {"type":"text","text":"{{l8}}","fw":0.108,"size":30,"weight":"heavy","color":"#2B1147"}]}]}},
+"lock":{"type":"column","h":160,"bg":"#2B1147","pad":[20,22,20,22],"items":[
+ {"type":"row","items":[
+  {"type":"text","text":"MYSTERY DROP","size":11,"weight":"bold","tracking":0.08,"color":"#E2BBFF"},
+  {"type":"spacer"},
+  {"type":"text","text":"Full reveal in","size":12,"weight":"bold","color":"#FFFFFF"},
+  {"type":"timer","field":"reveal","mode":"down","size":12,"weight":"bold","mono":true,"color":"#FFFFFF"}]},
+ {"type":"spacer"},
+ {"type":"use","ref":"tiles"},
+ {"type":"spacer"},
+ {"type":"row","items":[
+  {"type":"text","text":"Clue {{clue_n}} of {{clues}}: {{clue}}","size":13,"weight":"semibold","color":"#FFFFFF","lines":1},
+  {"type":"spacer"},
+  {"type":"text","text":"Guess first, buy first","size":12,"color":"#E2BBFF"}]}]},
+"island":{
+ "leading":{"type":"text","runs":[{"text":"Clue {{clue_n}} of {{clues}}:","color":"#FFFFFF","weight":"semibold"},{"text":" {{clue}}"}],"size":13,"color":"#A1A1A8"},
+ "trailing":{"type":"timer","field":"reveal","mode":"down","size":16,"weight":"heavy","mono":true,"color":"#D48BFF"},
+ "center":{"type":"spacer"},
+ "bottom":{"type":"column","spacing":12,"align":"center","items":[
+  {"type":"use","ref":"tiles"},
+  {"type":"text","runs":[{"text":"Guess first, buy first.","color":"#FFFFFF","weight":"semibold"},{"text":" A new letter with every clue"}],"size":12,"color":"#A1A1A8","align":"center"}]},
+ "compact_leading":{"type":"icon","name":"lock","color":"#D48BFF"},
+ "compact_trailing":{"type":"timer","field":"reveal","mode":"down","size":14,"weight":"bold","color":"#D48BFF"},
+ "minimal":{"type":"icon","name":"lock","color":"#D48BFF"}},
+"small":{"type":"row","spacing":8,"pad":10,"bg":"#2B1147","items":[
+ {"type":"icon","name":"lock","size":"l","color":"#E2BBFF"},
+ {"type":"column","items":[
+  {"type":"text","text":"Full reveal in","size":12,"weight":"bold","color":"#E2BBFF"},
+  {"type":"timer","field":"reveal","mode":"down","size":24,"weight":"heavy","mono":true,"color":"#FFFFFF"}]}]},
+"promoted":{"title":"Mystery drop: clue {{clue_n}} of {{clues}}","text":"{{clue}} · guess first, buy first","chip":"{{clue_n}}/{{clues}}","timer":{"type":"timer","field":"reveal","mode":"down"}}},
+"state":{"title":"Mystery drop","l1":"S","l2":"N","l3":"","l4":"A","l5":"","l6":"","l7":"R","l8":"S","mask":[1,1,0,1,0,0,1,1],"clue_n":3,"clues":5,"clue":"it comes in red","reveal":"2026-11-18T20:04:10+05:30"}}
