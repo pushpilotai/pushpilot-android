@@ -81,6 +81,8 @@ internal class HttpTransport(private val store: Store, private val defaultBaseUr
             connection.requestMethod = if (json == null) "GET" else "POST"
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000
+            // An app-installed HttpResponseCache must not answer the in-app fetch with an old list.
+            connection.useCaches = false
             connection.setRequestProperty("X-SDK-Key", sdkKey)
             if (json != null) {
                 connection.doOutput = true
