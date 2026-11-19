@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0 (unreleased)
+
+- In-app messages: the SDK fetches the installation's eligible in-app messages (`GET /api/sdk/v1/in-app/`) when the app comes to the foreground, at most once a minute, and caches each page with its images and fonts inlined before it may show. A slow phone (low-RAM, or under 3 GiB) gets a message's light page when it has one.
+- Shows the first eligible `app_open` message once per foreground, and `PushPilot.showInApp(name)` shows the first eligible message with that trigger name from the cache, returning whether it is on screen. Respects each message's per-device cap (the larger of the SDK's and the server's count) and its dates, and never shows two at once.
+- Messages show in a full-screen transparent web view over the current activity, locked down: JavaScript only, no file, content, storage, location, camera, microphone, zoom, new windows or autofill, every navigation cancelled, and a content security policy that allows outside requests only to the app's allowed origins.
+- The page's `window.pushpilot` bridge: `close`, `open(url)` (to the link handler set with `setLinkHandler`, or `ACTION_VIEW`), `haptic`, `track`, `insets`, `target`, `platform`, `light`, `posture`/`onPosture` (always `flat` on Android, with the screen size); `island` is `null`.
+- Coach marks: `PushPilot.markView(view, name)` and `unmarkView(name)` name views a `coach_mark` message points at; it shows only while that view is on screen.
+- Reports `shown`, `clicked` (per `track`) and `dismissed` (closed without a `track`) to `POST /api/sdk/v1/in-app/events/`, queued on disk and batched like push events; `forget` drops them with the in-app cache.
+- The library ships a consumer R8 rule that keeps the bridge method.
+
 ## 2.1.1 (unreleased)
 
 - Live activities: `handleMessage` draws, updates and ends PushPilot live activities as one ongoing notification per activity on a new "Live updates" channel, from the activity's layout. On Android 16 they are promoted Live Updates when the push asks and the user allows it (status chip, segmented progress, tracker icon, timer).

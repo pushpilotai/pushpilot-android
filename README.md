@@ -1,6 +1,6 @@
 # PushPilot Android SDK
 
-Registers your app's installation with PushPilot and forwards its FCM push address (registration token or Firebase Installation ID), so you can send pushes to individual users from the PushPilot dashboard. It shows PushPilot's notifications itself, with an image and up to three buttons, and reports when each one is delivered and tapped.
+Registers your app's installation with PushPilot and forwards its FCM push address (registration token or Firebase Installation ID), so you can send pushes to individual users from the PushPilot dashboard. It shows PushPilot's notifications itself, with an image and up to three buttons, and reports when each one is delivered and tapped. From 2.2.0 it also shows PushPilot in-app messages over your app's screens.
 
 - Kotlin, Android 6.0 (API 23) and later.
 - No Firebase dependency and no other runtime dependency besides the Kotlin standard library. Your app keeps its own Firebase setup and hands the SDK its FCM push address.
@@ -11,7 +11,7 @@ Registers your app's installation with PushPilot and forwards its FCM push addre
 
 ```kotlin
 dependencies {
-    implementation("ai.pushpilot:sdk:2.0.0")
+    implementation("ai.pushpilot:sdk:2.2.0")
 }
 ```
 
@@ -124,6 +124,38 @@ From 2.1.1, `handleMessage` also draws live activities (PushPilot's Live Updates
 - **What it reports.** `live_started` once per activity when it is first shown, `live_dismissed` when the user swipes it away, and `clicked`. Never `delivered`. Each sync carries a `live` object (see below), so PushPilot only sends live activities to devices that can show them.
 - The SDK's manifest adds `POST_PROMOTED_NOTIFICATIONS` (a normal permission, granted at install; the user can turn promotion off in settings) and a receiver for swiped-away activities. It remembers live activities in `ai.pushpilot.sdk.live.json` in the no-backup directory until each one is over.
 
+## In-app messages
+
+From 2.2.0 the SDK shows in-app messages made on the dashboard: small HTML pages drawn in a transparent web view over your current screen. Beyond the setup above, your app needs nothing for messages that show when the app opens.
+
+1. **`init` in `Application.onCreate`**, as above, so the SDK sees your activities start and resume. Messages are fetched for an installation once its first sync was accepted, each time the app comes to the foreground (at most once a minute), and every page is downloaded with its images and fonts before it can show. A message never shows from the network: what was cached at the last fetch is what shows.
+2. **App open.** When the app comes to the foreground, the first eligible message with the "app open" trigger shows over the resumed activity, at most one per foreground. A rotation is not a new foreground.
+3. **At points you choose,** call `PushPilot.showInApp("checkout")` on the main thread. It shows the first eligible cached message whose trigger name is `checkout` and returns `true` if it is now on screen; `false` when none is eligible, another message is on screen, no activity is resumed, the SDK has not started, or it was called off the main thread.
+
+   ```kotlin
+   checkoutButton.setOnClickListener {
+       PushPilot.showInApp("checkout")
+       // ...your own checkout code
+   }
+   ```
+
+4. **Coach marks.** A coach-mark message points at one of your views by name. Name it once the view exists, for example in `onCreate` or `onViewCreated`:
+
+   ```kotlin
+   PushPilot.markView(binding.composeButton, "compose")
+   ```
+
+   The name is what the dashboard's coach-mark target asks for. The SDK holds the view weakly and the last view marked with a name wins; `PushPilot.unmarkView("compose")` removes it. A coach mark shows only while its view is attached to the current activity's window, visible and at least partly on screen; otherwise it waits and the next eligible message is used. Compose apps can mark the `ComposeView` or the `LocalView.current` that holds the target.
+5. **Links.** A message's buttons open links with `pushpilot.open(url)`. The message closes and the link goes to the handler set with `PushPilot.setLinkHandler` (the same one notification taps use), on the main thread, so you can route deep links inside the app. Without a handler, the SDK opens it with an `ACTION_VIEW` intent from the current activity. `javascript:`, `data:`, `file:`, `blob:` and `vbscript:` links are refused.
+
+- **Caps and dates.** A message stops showing at its per-device cap, counting the larger of the SDK's own count and the server's. Its start and end dates are checked against the device clock too.
+- **Slow phones.** On a low-RAM phone or one with under 3 GiB of memory, a message's lighter page is used when it has one.
+- **The web view** is full screen, transparent and locked down: JavaScript on; no file or content access, no web storage or database, no location, camera or microphone, no zoom, no new windows and no autofill; every navigation is cancelled. A content security policy blocks every request except to the HTTPS origins listed for your app on the dashboard. Back closes the message.
+- **What the page gets** (`window.pushpilot`): `close()`, `open(url)`, `haptic(kind)` (through `View.performHapticFeedback`, so it follows the user's touch-feedback setting), `track(buttonId)`, `insets` (system bars and cutout, in CSS px), `target` (the coach mark's view), `platform` (`"android"`), `light`, and `posture` with `onPosture(fn)`: always `flat` on Android, with the screen size, updated when the window's size changes. `island` is always `null`.
+- **What it reports:** `shown` when a message goes on screen, `clicked` with the button id for each `track` call, and `dismissed` when it closes with no `track` call. They are queued on disk and sent in batches like push events.
+- **Where it keeps things:** cached pages in the app's cache directory (`pushpilot-inapp/`; a cleared cache is downloaded again at the next fetch), and the last fetch and shown counts in `ai.pushpilot.sdk.inapp.json` in the no-backup directory. `forget()` clears both.
+- If you shrink your app with R8, the SDK's own consumer rule keeps the bridge; nothing to add.
+
 ## Public methods
 
 All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPilot.init(...)` too).
@@ -140,6 +172,8 @@ All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPi
 | `handleMessage(context, data: Map<String, String>): Boolean` | For a PushPilot push (its data has `source` = `pushpilot`), reports delivery, shows the notification and returns `true`; a live activity step draws or updates its activity instead (see "Live activities"). For any other push it does nothing and returns `false`. Off the main thread, as in `onMessageReceived`, it waits for the image; on the main thread it shows the notification in the background. |
 | `setLinkHandler(handler: LinkHandler?)` | Hands the links of tapped notifications to `handler.onLink(link: Uri)` instead of the SDK opening them; `null` restores the default. See "Routing links yourself". |
 | `tappedNotification(intent: Intent?): TappedNotification?` | The notification whose tap started `intent`: `notificationId` and `data`; `null` for any other intent. |
+| `showInApp(name: String): Boolean` | Shows the first eligible cached in-app message whose trigger name is `name`; returns whether it is on screen. Main thread only. See "In-app messages". |
+| `markView(view: View, name: String)` / `unmarkView(name: String)` | Names a view as a coach-mark target, held weakly; removes the name. |
 | `status(callback: (Status) -> Unit)` | Calls back on the main thread with a `Status` for a status or debug screen: the installation id, the live flags of the last sync the server accepted (supported, on, promoted look allowed) and the last sync. It holds no token or key. |
 
 ## What the SDK sends, and when
@@ -174,6 +208,8 @@ Tracking events go to `{baseUrl}/api/sdk/v1/events/` as `{"events": [...]}`, at 
 | `button_id` | The tapped button's id; only on `clicked` from a button |
 | `at` | When it happened, RFC 3339 in UTC |
 
+In-app messages are fetched with `GET {baseUrl}/api/sdk/v1/in-app/?installation_id=<id>` (same key header), and their events go to `{baseUrl}/api/sdk/v1/in-app/events/` as `{"events": [...]}`, at most 100 per request, each with `message_id`, `installation_id`, `type` (`shown`, `clicked` or `dismissed`), `button_id` (only on `clicked`) and `at`. Message pages, images and fonts are downloaded from the content URLs in the fetch answer, without the SDK key.
+
 Nothing else is collected: no advertising id, no location, no email or phone, and no events other than those. Like any HTTP request, the server sees the device's IP address; PushPilot uses it in memory for rate limiting.
 
 When requests are made:
@@ -191,7 +227,7 @@ What to declare depends on what you pass to the SDK. For the SDK's own data:
 
 - **Device or other IDs: collected.** PushPilot's installation id and the FCM push address (Firebase Installation ID or registration token). Purpose: app functionality (delivering notifications). Not optional for users of push.
 - **User IDs: collected**, only if you call `setExternalUserId`. Purpose: app functionality (sending to a signed-in user's devices).
-- **App interactions (App activity): collected.** Whether each notification was delivered and whether it or one of its buttons was tapped; for live activities, whether each was shown, swiped away or tapped. Purpose: analytics (delivery and click reports).
+- **App interactions (App activity): collected.** Whether each notification was delivered and whether it or one of its buttons was tapped; for live activities, whether each was shown, swiped away or tapped; for in-app messages, whether each was shown, which buttons were tapped, and whether it was dismissed. Purpose: analytics (delivery and click reports).
 - **Custom attributes:** declare whatever category matches the values you send with `setAttributes` (for example, purchase history or app interactions).
 - Data is **encrypted in transit** (HTTPS) when you use the default base URL.
 - Users can **request deletion**: call `PushPilot.forget()` from your account-deletion or privacy flow.
@@ -208,7 +244,7 @@ The sample builds without Firebase. To receive pushes, put your own `google-serv
 
 Add `-PpushpilotBaseUrl=https://your-server` to point it at another server. Without a `google-services.json` the app runs and syncs, but has no push address.
 
-The **Show a test push** button feeds `handleMessage` a built-in payload with an image, two buttons and Hindi, Arabic and Tamil text, so display and taps can be checked without a server. The screen shows the notification id and `order_id` that `tappedNotification` returns when opened from a notification. The **Links** button switches between the SDK opening links and a link handler that shows them in a toast. Its events carry a random notification id that the server does not know.
+The **Show a test push** button feeds `handleMessage` a built-in payload with an image, two buttons and Hindi, Arabic and Tamil text, so display and taps can be checked without a server. The screen shows the notification id and `order_id` that `tappedNotification` returns when opened from a notification. The **Links** button switches between the SDK opening links and a link handler that shows them in a toast. Its events carry a random notification id that the server does not know. **Show in-app message** calls `showInApp` with the trigger name typed above it (`demo` by default) and says so when nothing is eligible; the button itself is marked `sample_show_in_app` for coach marks.
 
 ### Test against a local server
 
