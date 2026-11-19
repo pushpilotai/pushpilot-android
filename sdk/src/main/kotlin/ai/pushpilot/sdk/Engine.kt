@@ -33,7 +33,7 @@ internal interface Scheduler {
  * The sync engine. Every method runs on the [Scheduler] thread, so state needs no locks.
  * The whole desired state lives in [Store]; a sync is pending whenever the payload built
  * from it differs from the last one the server accepted, which survives process death.
- * Tracking events wait in [Store] too and go out in batches with the same backoff.
+ * Tracking events (push and in-app, in two queues) wait in [Store] too and go out in batches with the same backoff.
  */
 internal class Engine(
     private val store: Store,
@@ -113,11 +113,30 @@ internal class Engine(
             .put("type", type)
             .put("at", rfc3339(scheduler.now()))
         if (buttonId != null) event.put("button_id", buttonId)
-        val queue = JSONArray(store.get(EVENTS) ?: "[]").put(event)
+        enqueue(EVENTS, event)
+    }
+
+    /** Queues an in-app event (`shown`, `clicked` or `dismissed`) at [atMs], the moment it happened; sent like push events. */
+    fun trackInApp(messageId: String, type: String, buttonId: String?, atMs: Long) {
+        val event = JSONObject()
+            .put("message_id", messageId)
+            .put("installation_id", store.get(ID))
+            .put("type", type)
+            .put("at", rfc3339(atMs))
+        if (buttonId != null) event.put("button_id", buttonId)
+        enqueue(IN_APP_EVENTS, event)
+    }
+
+    /** The installation id once a sync was accepted, else null; the in-app fetch waits for it. */
+    fun syncedInstallationId(): String? = if (store.get(SYNCED_AT) != null) store.get(ID) else null
+
+    /** Appends [event] to the queue under [key], dropping the oldest past the cap, and schedules a send. */
+    private fun enqueue(key: String, event: JSONObject) {
+        val queue = JSONArray(store.get(key) ?: "[]").put(event)
         val keep = JSONArray()
         for (i in maxOf(0, queue.length() - MAX_EVENTS) until queue.length()) keep.put(queue.get(i))
         if (keep.length() < queue.length()) log("event queue full; dropped the oldest")
-        update(EVENTS to keep.toString())
+        update(key to keep.toString())
     }
 
     /** Clears the external user id; the installation stays registered. */
@@ -129,7 +148,7 @@ internal class Engine(
         val forgetId = if (store.get(SYNCED_AT) != null) store.get(ID) else store.get(FORGET)
         store.put(
             FORGET to forgetId, ID to newId(), TOKEN to null, EXTERNAL to null,
-            TOPICS to null, ATTRIBUTES to null, SYNCED_AT to null, EVENTS to null,
+            TOPICS to null, ATTRIBUTES to null, SYNCED_AT to null, EVENTS to null, IN_APP_EVENTS to null,
         )
         // Nothing is registered again until the app sets something or the next launch.
         store.put(SENT to payload())
@@ -166,7 +185,7 @@ internal class Engine(
             store.put(FORGET to null)
         }
         if (!sync()) return
-        sendEvents()
+        if (sendEvents(EVENTS, "events")) sendEvents(IN_APP_EVENTS, "in-app/events")
     }
 
     /** Syncs if the payload differs from the last accepted one; false when a retry was scheduled. */
@@ -190,17 +209,20 @@ internal class Engine(
         return true
     }
 
-    /** Sends queued events oldest first, up to 100 per request; a rejected batch is dropped, a failed one retried. */
-    private fun sendEvents() {
+    /**
+     * Sends the queue under [key] to [path] oldest first, up to 100 per request; a rejected batch is
+     * dropped, a failed one retried unchanged. False when a retry was scheduled.
+     */
+    private fun sendEvents(key: String, path: String): Boolean {
         while (true) {
-            val queue = JSONArray(store.get(EVENTS) ?: return)
-            if (queue.length() == 0) return store.put(EVENTS to null)
+            val queue = JSONArray(store.get(key) ?: return true)
+            if (queue.length() == 0) return true.also { store.put(key to null) }
             val batch = JSONArray()
             for (i in 0 until minOf(EVENT_BATCH, queue.length())) batch.put(queue.get(i))
-            post("events", JSONObject().put("events", batch).toString()) ?: return
+            post(path, JSONObject().put("events", batch).toString()) ?: return false
             val rest = JSONArray()
             for (i in batch.length() until queue.length()) rest.put(queue.get(i))
-            store.put(EVENTS to rest.takeIf { it.length() > 0 }?.toString())
+            store.put(key to rest.takeIf { it.length() > 0 }?.toString())
         }
     }
 
@@ -269,6 +291,7 @@ internal class Engine(
         const val SYNCED_AT = "last_synced_at"
         const val FORGET = "pending_forget_id"
         const val EVENTS = "pending_events"
+        const val IN_APP_EVENTS = "pending_in_app_events"
 
         // Saved by init for processes that start without it; app configuration, so forget keeps them.
         const val SDK_KEY = "sdk_key"

@@ -67,18 +67,26 @@ internal class FileStore(name: String = "ai.pushpilot.sdk.json", dir: () -> File
 /** HttpURLConnection transport authenticated by the public SDK key that init saved in [store]. */
 internal class HttpTransport(private val store: Store, private val defaultBaseUrl: String) : Transport {
     /** POSTs [json] with the saved key and base URL, read each time so a later init applies at once; I/O failures become -1, retried. */
-    override fun post(path: String, json: String): Response = try {
+    override fun post(path: String, json: String): Response = request(path, "", json)
+
+    /** GETs `/api/sdk/v1/{path}/?{query}` like [post]; [query] must already be URL-encoded. */
+    fun get(path: String, query: String): Response = request(path, "?$query", null)
+
+    /** One request with the saved key; a null [json] makes it a GET. */
+    private fun request(path: String, query: String, json: String?): Response = try {
         val sdkKey = store.get(Engine.SDK_KEY) ?: throw IOException("no saved SDK key")
         val baseUrl = store.get(Engine.BASE_URL) ?: defaultBaseUrl
-        val connection = URL("${baseUrl.trimEnd('/')}/api/sdk/v1/$path/").openConnection() as HttpURLConnection
+        val connection = URL("${baseUrl.trimEnd('/')}/api/sdk/v1/$path/$query").openConnection() as HttpURLConnection
         try {
-            connection.requestMethod = "POST"
+            connection.requestMethod = if (json == null) "GET" else "POST"
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000
-            connection.doOutput = true
-            connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("X-SDK-Key", sdkKey)
-            connection.outputStream.use { it.write(json.toByteArray()) }
+            if (json != null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.outputStream.use { it.write(json.toByteArray()) }
+            }
             val code = connection.responseCode
             val stream = if (code < 400) connection.inputStream else connection.errorStream
             val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
