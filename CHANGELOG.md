@@ -9,6 +9,7 @@
 - Coach marks: `PushPilot.markView(view, name)` and `unmarkView(name)` name views a `coach_mark` message points at; it shows only while that view is on screen.
 - Reports `shown`, `clicked` (per `track`) and `dismissed` (closed without a `track`) to `POST /api/sdk/v1/in-app/events/`, queued on disk and batched like push events; `forget` drops them with the in-app cache.
 - The library ships a consumer R8 rule that keeps the bridge method.
+- `PushPilot.setCurrentActivity(activity)` for wrappers (Flutter, React Native) whose init runs after their activity resumed, so the first foreground still gets its `app_open` message and `showInApp` works. Native apps that call init in `Application.onCreate` don't need it.
 
 ## 2.1.1 (unreleased)
 

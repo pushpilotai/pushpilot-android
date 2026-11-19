@@ -121,6 +121,19 @@ internal class InApp(
         activity.window.decorView.post { tryAppOpen() }
     }
 
+    /**
+     * Counts a wrapper's activity (Flutter, React Native) that started and resumed before init
+     * registered the lifecycle watcher, so this foreground still gets its `app_open` message and
+     * `showInApp` has an activity. Does nothing when the watcher already saw a start or a resume.
+     */
+    fun adopt(activity: Activity) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        // shortcut: assumes the wrapper calls this while [activity] is in the foreground; one stopped in
+        // between would leave the count one high until the next stop. Upgrade with androidx Lifecycle if seen.
+        if (started == 0 && !changingConfiguration) onStarted()
+        if (resumed?.get() == null) onResumed(activity)
+    }
+
     /** Forgets [activity] as the one to show over. */
     fun onPaused(activity: Activity) {
         if (resumed?.get() === activity) resumed = null

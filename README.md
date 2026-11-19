@@ -128,7 +128,7 @@ From 2.1.1, `handleMessage` also draws live activities (PushPilot's Live Updates
 
 From 2.2.0 the SDK shows in-app messages made on the dashboard: small HTML pages drawn in a transparent web view over your current screen. Beyond the setup above, your app needs nothing for messages that show when the app opens.
 
-1. **`init` in `Application.onCreate`**, as above, so the SDK sees your activities start and resume. Messages are fetched for an installation once its first sync was accepted, each time the app comes to the foreground (at most once a minute), and every page is downloaded with its images and fonts before it can show. A message never shows from the network: what was cached at the last fetch is what shows.
+1. **`init` in `Application.onCreate`**, as above, so the SDK sees your activities start and resume. Messages are fetched for an installation once its first sync was accepted, each time the app comes to the foreground (at most once a minute), and every page is downloaded with its images and fonts before it can show. A message never shows from the network: what was cached at the last fetch is what shows. A wrapper or framework whose init runs only after its activity has resumed calls `PushPilot.setCurrentActivity(activity)` right after init, so the first foreground is not missed (the Flutter and React Native SDKs do this for you).
 2. **App open.** When the app comes to the foreground, the first eligible message with the "app open" trigger shows over the resumed activity, at most one per foreground. A rotation is not a new foreground.
 3. **At points you choose,** call `PushPilot.showInApp("checkout")` on the main thread. It shows the first eligible cached message whose trigger name is `checkout` and returns `true` if it is now on screen; `false` when none is eligible, another message is on screen, no activity is resumed, the SDK has not started, or it was called off the main thread.
 
@@ -174,6 +174,7 @@ All methods are static on `PushPilot` (`@JvmStatic`, so Java callers use `PushPi
 | `tappedNotification(intent: Intent?): TappedNotification?` | The notification whose tap started `intent`: `notificationId` and `data`; `null` for any other intent. |
 | `showInApp(name: String): Boolean` | Shows the first eligible cached in-app message whose trigger name is `name`; returns whether it is on screen. Main thread only. See "In-app messages". |
 | `markView(view: View, name: String)` / `unmarkView(name: String)` | Names a view as a coach-mark target, held weakly; removes the name. |
+| `setCurrentActivity(activity: Activity)` | For code whose `init` runs after its activity resumed (wrappers): hands that activity over so the first foreground gets in-app messages. Any thread. |
 | `status(callback: (Status) -> Unit)` | Calls back on the main thread with a `Status` for a status or debug screen: the installation id, the live flags of the last sync the server accepted (supported, on, promoted look allowed) and the last sync. It holds no token or key. |
 
 ## What the SDK sends, and when

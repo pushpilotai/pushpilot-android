@@ -187,6 +187,17 @@ object PushPilot {
     }
 
     /**
+     * For wrappers (Flutter, React Native) whose init runs after their activity has already resumed:
+     * hands that activity over, so the first foreground gets `app_open` messages and [showInApp] works
+     * before the app next goes to the background. Call it right after [init], from any thread. A native
+     * app that calls init in `Application.onCreate` never needs it.
+     */
+    @JvmStatic
+    fun setCurrentActivity(activity: Activity) {
+        Handler(Looper.getMainLooper()).post { inAppSafely { it.adopt(activity) } }
+    }
+
+    /**
      * Names [view] for coach marks: a `coach_mark` message whose target is [name] shows only while this
      * view is attached, visible and on screen, and points at it. The view is held weakly; a later call
      * with the same name replaces it. Call it on the main thread; works before [init].
