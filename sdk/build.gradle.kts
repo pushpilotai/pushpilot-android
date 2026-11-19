@@ -15,6 +15,8 @@ android {
     defaultConfig {
         minSdk = 23
         buildConfigField("String", "SDK_VERSION", "\"$version\"")
+        // Keeps the in-app bridge's @JavascriptInterface method in apps that shrink their code.
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildFeatures { buildConfig = true }

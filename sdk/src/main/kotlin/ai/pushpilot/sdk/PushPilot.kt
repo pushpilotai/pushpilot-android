@@ -1,5 +1,7 @@
 package ai.pushpilot.sdk
 
+import ai.pushpilot.sdk.inapp.InApp
+import ai.pushpilot.sdk.inapp.Marks
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -8,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.concurrent.Executors
@@ -36,17 +39,37 @@ object PushPilot {
         fun onLink(link: Uri)
     }
 
-    /** Asks for a sync check whenever an activity resumes, which also happens after the permission dialog closes. */
+    /** In-app messages; created with the engine. */
+    @Volatile
+    private var inApp: InApp? = null
+
+    /**
+     * Asks for a sync check whenever an activity resumes, which also happens after the permission
+     * dialog closes, and tells in-app messages about foregrounds and the activity to show over.
+     */
     private val foregroundWatcher = object : Application.ActivityLifecycleCallbacks {
-        override fun onActivityResumed(activity: Activity) = dispatcher.submit { foreground() }
+        override fun onActivityResumed(activity: Activity) {
+            dispatcher.submit { foreground() }
+            inAppSafely { it.onResumed(activity) }
+        }
+
+        override fun onActivityStarted(activity: Activity) = inAppSafely { it.onStarted() }
+        override fun onActivityPaused(activity: Activity) = inAppSafely { it.onPaused(activity) }
+        override fun onActivityStopped(activity: Activity) = inAppSafely { it.onStopped(activity) }
+        override fun onActivityDestroyed(activity: Activity) = inAppSafely { it.onDestroyed(activity) }
 
         // The remaining callbacks are required by the interface and unused.
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-        override fun onActivityStarted(activity: Activity) = Unit
-        override fun onActivityPaused(activity: Activity) = Unit
-        override fun onActivityStopped(activity: Activity) = Unit
         override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-        override fun onActivityDestroyed(activity: Activity) = Unit
+    }
+
+    /** Runs [call] on the in-app component if it exists, keeping any failure away from the app. */
+    private inline fun inAppSafely(call: (InApp) -> Unit) {
+        try {
+            inApp?.let(call)
+        } catch (e: Throwable) {
+            log("in-app error: ${e.javaClass.simpleName}")
+        }
     }
 
     /**
@@ -80,10 +103,15 @@ object PushPilot {
     @Synchronized
     private fun store(app: Context): FileStore = fileStore ?: FileStore { app.noBackupFilesDir }.also { fileStore = it }
 
-    /** Creates the engine (once per process) and starts watching for foregrounds. */
+    /** Creates the engine and in-app messages (once per process) and starts watching for foregrounds. */
     private fun engine(app: Context, store: Store): Engine {
+        val transport = HttpTransport(store, DEFAULT_BASE_URL)
+        val engine = Engine(store, transport, scheduler) { deviceFields(app) }
+        inApp = InApp(app, scheduler, transport, FileStore("ai.pushpilot.sdk.inapp.json") { app.noBackupFilesDir }, engine::syncedInstallationId) {
+            scheduler.schedule(0) { engine.trackInApp(it.messageId, it.type, it.buttonId, it.at) }
+        }
         if (app is Application) app.registerActivityLifecycleCallbacks(foregroundWatcher)
-        return Engine(store, HttpTransport(store, DEFAULT_BASE_URL), scheduler) { deviceFields(app) }
+        return engine
     }
 
     /**
@@ -139,7 +167,36 @@ object PushPilot {
 
     /** Deletes this installation from PushPilot and clears local state; the next launch registers a new one. */
     @JvmStatic
-    fun forget() = dispatcher.submit { forget() }
+    fun forget() = dispatcher.submit {
+        forget()
+        inApp?.forget()
+    }
+
+    /**
+     * Shows the first eligible cached in-app message whose trigger name is [name], with no network
+     * round trip, and returns whether it is now on screen. Call it on the main thread; it returns
+     * false elsewhere, before the SDK has started, when no activity is resumed, when another in-app
+     * message is on screen, and when no message is eligible.
+     */
+    @JvmStatic
+    fun showInApp(name: String): Boolean = try {
+        inApp?.showInApp(name) ?: false
+    } catch (e: Throwable) {
+        log("showInApp failed: ${e.javaClass.simpleName}")
+        false
+    }
+
+    /**
+     * Names [view] for coach marks: a `coach_mark` message whose target is [name] shows only while this
+     * view is attached, visible and on screen, and points at it. The view is held weakly; a later call
+     * with the same name replaces it. Call it on the main thread; works before [init].
+     */
+    @JvmStatic
+    fun markView(view: View, name: String) = Marks.mark(view, name)
+
+    /** Removes the coach-mark name [name] set by [markView]. */
+    @JvmStatic
+    fun unmarkView(name: String) = Marks.unmark(name)
 
     /**
      * Call from `onMessageReceived` with `RemoteMessage.data`. For a PushPilot push it reports
@@ -203,6 +260,9 @@ object PushPilot {
      *   tap too; if none is set by then, the SDK opens that link. Either way it is opened once.
      *
      * The click is recorded whether or not a handler is set.
+     *
+     * The handler also receives links an in-app message opens with `pushpilot.open(url)`, on the main
+     * thread, after the message has closed; with no handler set the SDK opens them with `ACTION_VIEW`.
      */
     @JvmStatic
     fun setLinkHandler(handler: LinkHandler?) {
