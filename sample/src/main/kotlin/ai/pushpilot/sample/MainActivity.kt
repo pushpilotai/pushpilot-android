@@ -56,6 +56,15 @@ class MainActivity : Activity() {
             links.text = linkLabel()
         }
         layout.addView(links)
+        // In-app messages: shows the cached message whose trigger name is typed here; the button is a coach-mark target too.
+        val trigger = EditText(this).apply { hint = "In-app trigger name"; setText("demo") }
+        layout.addView(trigger)
+        val showInApp = button("Show in-app message") {
+            val shown = PushPilot.showInApp(trigger.text.toString().trim())
+            if (!shown) Toast.makeText(this, "No eligible in-app message for that name", Toast.LENGTH_SHORT).show()
+        }
+        PushPilot.markView(showInApp, "sample_show_in_app")
+        layout.addView(showInApp)
         // What the app receives when a PushPilot notification is opened: its id and data.
         val tapped = PushPilot.tappedNotification(intent)
         layout.addView(TextView(this).apply { text = "Opened from notification: ${tapped?.notificationId ?: "-"}, order_id: ${tapped?.data?.get("order_id") ?: "-"}" })
