@@ -76,7 +76,7 @@ internal class Overlay private constructor(
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
 
             /** The same for Android 6, which calls only this overload. */
-            @Deprecated("Android 6 only")
+            @Suppress("OVERRIDE_DEPRECATION")
             override fun shouldOverrideUrlLoading(view: WebView, url: String) = true
 
             /** A crashed or killed renderer would otherwise take the app down with it; close instead. */
